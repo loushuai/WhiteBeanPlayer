@@ -14,7 +14,6 @@ namespace bigbean
 
 OpenslSink::OpenslSink()
 	:mBuffer(nullptr)
-	,mBufferSize(0)
 {
 
 }
@@ -146,23 +145,25 @@ int OpenslSink::createBufferQueueAudioPlayer(uint32_t sampleRate,
     //声道数
     pcm.numChannels = channelCount;
     //每秒采样数
-    pcm.samplesPerSec = sampleRate * 1000;
+    pcm.samplesPerSec = openslSampleRate(sampleRate);
+	if (pcm.samplesPerSec == 0) {
+		LOGE("Invalid sample rate");
+		return -1;
+	}
     //精度
-    pcm.bitsPerSample = SL_PCMSAMPLEFORMAT_FIXED_16;
-    pcm.containerSize = SL_PCMSAMPLEFORMAT_FIXED_16;
+    pcm.bitsPerSample = openslPcmFormat(format);
+	if (pcm.bitsPerSample == 0) {
+		LOGE("Invalid pcm format");
+		return -1;
+	}
+	pcm.containerSize = pcm.bitsPerSample;
+    
     if(pcm.numChannels == 2) {
     	pcm.channelMask = SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT;
     } else {
     	pcm.channelMask = SL_SPEAKER_FRONT_CENTER;
     }
     pcm.endianness = SL_BYTEORDER_LITTLEENDIAN;
-
-	// 2 seconds buffer
-	mBufferSize = 2 * pcm.numChannels * pcm.samplesPerSec * pcm.bitsPerSample / 8;
-	mBuffer = malloc(mBufferSize);
-	if (!mBuffer) {
-		return -1;
-	}
 
 	SLDataSource audioSrc = {&loc_bufq, &pcm};
 
@@ -227,12 +228,7 @@ int OpenslSink::createBufferQueueAudioPlayer(uint32_t sampleRate,
 	}	
 	
 	return 0;
- failed:
-	if (mBuffer) {
-		free(mBuffer);
-		mBuffer = NULL;
-	}
-	
+ failed:	
 	if (mPlayerObject) {
 		(*mPlayerObject)->Destroy(mPlayerObject);
 		mPlayerObject = NULL;
@@ -257,8 +253,8 @@ void OpenslSink::AudioPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *con
 		return;
 	}
 	
-	size = self->mCallBack(&(self->mBuffer), &(self->mBufferSize));
-	result = (*bq)->Enqueue(bq, self->mBuffer, size);
+	size = self->mCallBack(self->mBuffer);
+	result = (*bq)->Enqueue(bq, self->mBuffer.get(), size);
 	if(SL_RESULT_SUCCESS != result){
 		LOGE("Enqueue failed");
 	}
@@ -266,5 +262,87 @@ void OpenslSink::AudioPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *con
 	LOGD("audio player callback exit");
 }
 
+SLuint32 OpenslSink::openslSampleRate(int32_t sr)
+{
+	SLuint32 ret = 0;
+	
+	switch(sr) {
+	case 8000:
+		ret = SL_SAMPLINGRATE_8;
+		break;
+	case 11025:
+		ret = SL_SAMPLINGRATE_11_025;
+		break;
+	case 12000:
+		ret = SL_SAMPLINGRATE_12;
+		break;
+	case 16000:
+		ret = SL_SAMPLINGRATE_16;
+		break;
+	case 22050:
+		ret = SL_SAMPLINGRATE_22_05;
+		break;
+	case 24000:
+		ret = SL_SAMPLINGRATE_24;
+		break;
+	case 32000:
+		ret = SL_SAMPLINGRATE_32;
+		break;
+	case 44100:
+		ret = SL_SAMPLINGRATE_44_1;
+		break;
+	case 48000:
+		ret = SL_SAMPLINGRATE_48;
+		break;
+	case 64000:
+		ret = SL_SAMPLINGRATE_64;
+		break;
+	case 88200:
+		ret = SL_SAMPLINGRATE_88_2;
+		break;
+	case 96000:
+		ret = SL_SAMPLINGRATE_96;
+		break;
+	case 192000:
+		ret = SL_SAMPLINGRATE_192;
+		break;
+	default:
+		ret = 0;
+		break;
+	}
+
+	return ret;
+}
+
+SLuint16 OpenslSink::openslPcmFormat(pcm_format_t format)
+{
+	SLuint16 ret = 0;
+
+	switch(format) {
+	case PCM_FORMAT_FIXED_8:
+		ret = SL_PCMSAMPLEFORMAT_FIXED_8;
+		break;
+	case PCM_FORMAT_FIXED_16:
+		ret = SL_PCMSAMPLEFORMAT_FIXED_16;
+		break;
+	case PCM_FORMAT_FIXED_20:
+		ret = SL_PCMSAMPLEFORMAT_FIXED_20;
+		break;
+	case PCM_FORMAT_FIXED_24:
+		ret = SL_PCMSAMPLEFORMAT_FIXED_24;
+		break;
+	case PCM_FORMAT_FIXED_28:
+		ret = SL_PCMSAMPLEFORMAT_FIXED_28;
+		break;
+	case PCM_FORMAT_FIXED_32:
+		ret = SL_PCMSAMPLEFORMAT_FIXED_32;
+		break;
+	default:
+		ret = 0;
+		break;
+	}
+
+	return ret;
+}
   
 }
