@@ -20,7 +20,7 @@ LOCAL_CPPFLAGS += -std=c++11 -D__STDC_CONSTANT_MACROS
 
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
 
-LOCAL_MODULE := bigbean
+LOCAL_MODULE := whitebean
 LOCAL_SRC_FILES += mediaplayer/TimedEventQueue.cpp \
                    mediaplayer/mediasink/audiosink/opensl/openslsink.cpp
 
@@ -41,7 +41,7 @@ LOCAL_MODULE := test
 LOCAL_SRC_FILES := test/testrunner.cpp \
 			       test/opensltest.cpp
 
-LOCAL_SHARED_LIBRARIES += libbigbean
+LOCAL_SHARED_LIBRARIES += libwhitebean
 
 include $(BUILD_EXECUTABLE)
 endif

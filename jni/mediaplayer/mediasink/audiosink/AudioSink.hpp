@@ -12,7 +12,7 @@
 
 #define DEFAULT_AUDIOSINK_BUFFERCOUNT 4
 
-namespace bigbean
+namespace whitebean
 {
 
 typedef enum {

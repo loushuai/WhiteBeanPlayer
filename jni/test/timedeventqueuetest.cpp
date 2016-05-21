@@ -12,7 +12,7 @@
 
 using namespace std;
 
-namespace bigbean
+namespace whitebean
 {
 
 TEST_CASE("TimedEventQueue")

@@ -16,7 +16,7 @@ using namespace std;
 #define INT64_MIN numeric_limits<int64_t>::min()
 #define INT64_MAX numeric_limits<int64_t>::max()
 
-namespace bigbean
+namespace whitebean
 {
 
 TimedEventQueue::TimedEventQueue()

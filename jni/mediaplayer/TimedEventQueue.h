@@ -15,7 +15,7 @@
 #include <memory>
 #include <condition_variable>
 
-namespace bigbean
+namespace whitebean
 {
 
 class TimedEventQueue {

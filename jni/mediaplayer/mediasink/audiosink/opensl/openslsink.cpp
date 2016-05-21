@@ -9,7 +9,7 @@
 #include "openslsink.hpp"
 #include "log.h"
 
-namespace bigbean
+namespace whitebean
 {
 
 OpenslSink::OpenslSink()

@@ -12,7 +12,7 @@
 #include <SLES/OpenSLES_Android.h>
 #include "../audiosink.hpp"
 
-namespace bigbean
+namespace whitebean
 {
 
 class OpenslSink : public AudioSink
