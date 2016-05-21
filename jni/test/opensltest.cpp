@@ -1,26 +1,24 @@
 #include <catch.hpp>
-#include <memory>
 #include "openslsink.hpp"
 
-using namespace std;
 using namespace bigbean;
 
 #define BUFFER_SIZE (1 << 14)
 
 FILE *pf;
 
-size_t fillBuffer(unique_ptr<uint8_t[]> &buf)
+size_t fillBuffer(void **buf, size_t *size)
 {
 	int32_t n;
 
 	printf("fill buffer enter\n");
+	
+	if (*size < BUFFER_SIZE || !(*buf)) {
+		*buf = realloc(*buf, BUFFER_SIZE);
+		*size = BUFFER_SIZE;
+	}
 
-	unique_ptr<uint8_t[]> pcm_buf(new uint8_t[BUFFER_SIZE]);
-
-	n = fread(pcm_buf.get(), 1, BUFFER_SIZE, pf);
-
-	// move unique ptr to caller
-	buf = move(pcm_buf);
+	n = fread(*buf, 1, BUFFER_SIZE, pf);
 
 	printf("fill buffer exit\n");
 	
@@ -35,7 +33,7 @@ TEST_CASE("OPENSLSINK")
 
 	SECTION("Play")
 	{
-		sink.open(32000, 1, PCM_FORMAT_FIXED_16, fillBuffer);
+		sink.open(32000, 1, PCM_FORMAT_FIXED_8, fillBuffer);
 		sink.start();
 	}
 
