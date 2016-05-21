@@ -10,6 +10,7 @@
 
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
+#include <memory>
 #include "../audiosink.hpp"
 
 namespace whitebean
@@ -47,7 +48,17 @@ private:
 	  * @param[in] context 回调所需的数据，PCM数据
 	  * @return void
 	*/
-	static void AudioPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);	
+	static void AudioPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context);
+
+	/*
+	 * @brief convert digital sample rate to opensl sample rate
+	 */
+	SLuint32 openslSampleRate(int32_t sr);
+
+	/*
+	 * @brief return opensl pcm format
+	 */
+	SLuint16 openslPcmFormat(pcm_format_t format);
 
   	/**
 	  * @brief  音频播放引擎对象
@@ -84,14 +95,9 @@ private:
 	AudioCallback mCallBack;
 
 	/*
-	 * 
+	 * @brief pcm buffer
 	 */
-	void *mBuffer;
-
-	/*
-	 * 
-	 */
-	size_t mBufferSize;
+	std::unique_ptr<uint8_t[]> mBuffer;
 };
   
 }
