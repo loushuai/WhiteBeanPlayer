@@ -7,13 +7,14 @@
 
 #include <stdlib.h>
 #include "openslsink.hpp"
-#include "log.h"
+#include "log.hpp"
 
 namespace whitebean
 {
 
 OpenslSink::OpenslSink()
 	:mBuffer(nullptr)
+	,mCookie(nullptr)
 {
 
 }
@@ -35,7 +36,8 @@ OpenslSink::~OpenslSink()
 }
 
 int OpenslSink::open( uint32_t sampleRate, int channelCount,
-                      pcm_format_t format, AudioCallback cb)
+                      pcm_format_t format, AudioCallback cb,
+					  void *cookie)
 {	
 	int ret = -1;
 
@@ -53,6 +55,8 @@ int OpenslSink::open( uint32_t sampleRate, int channelCount,
 	if (createBufferQueueAudioPlayer(sampleRate, channelCount, format) < 0) {
 		return -1;
 	}
+
+	mCookie = cookie;
 
 	LOGD("open exit");
 	
@@ -253,7 +257,10 @@ void OpenslSink::AudioPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *con
 		return;
 	}
 	
-	size = self->mCallBack(self->mBuffer);
+	size = self->mCallBack(self->mBuffer, self->mCookie);
+
+	LOGD("================================size %d", size);
+	
 	result = (*bq)->Enqueue(bq, self->mBuffer.get(), size);
 	if(SL_RESULT_SUCCESS != result){
 		LOGE("Enqueue failed");

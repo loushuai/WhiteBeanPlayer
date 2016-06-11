@@ -9,7 +9,7 @@ using namespace whitebean;
 
 FILE *pf;
 
-size_t fillBuffer(unique_ptr<uint8_t[]> &buf)
+size_t fillBuffer(unique_ptr<uint8_t[]> &buf, void *cookie)
 {
 	int32_t n;
 
@@ -31,11 +31,11 @@ TEST_CASE("OPENSLSINK")
 {
 	OpenslSink sink;
 	
-	pf = fopen("./32k16bit1ch.pcm", "rb");
+	pf = fopen("./test.pcm", "rb");
 
 	SECTION("Play")
 	{
-		sink.open(32000, 1, PCM_FORMAT_FIXED_16, fillBuffer);
+		sink.open(44100, 2, PCM_FORMAT_FIXED_16, fillBuffer);
 		sink.start();
 	}
 

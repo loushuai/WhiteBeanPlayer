@@ -1,5 +1,5 @@
 /*
- * log.h
+ * log.hpp
  *
  *  Created on: 2016Äê4ÔÂ25ÈÕ
  *      Author: loushuai

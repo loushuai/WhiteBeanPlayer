@@ -11,7 +11,7 @@
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
 #include <memory>
-#include "../audiosink.hpp"
+#include "audiosink.hpp"
 
 namespace whitebean
 {
@@ -24,7 +24,8 @@ public:
 
   int open( uint32_t sampleRate, int channelCount,
             pcm_format_t format=PCM_FORMAT_FIXED_8,
-            AudioCallback cb = NULL);
+            AudioCallback cb = NULL,
+			void *cookie = NULL);
 
   int start();
 
@@ -98,6 +99,8 @@ private:
 	 * @brief pcm buffer
 	 */
 	std::unique_ptr<uint8_t[]> mBuffer;
+
+	void *mCookie;
 };
   
 }

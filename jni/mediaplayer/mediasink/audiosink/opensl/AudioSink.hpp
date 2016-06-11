@@ -30,7 +30,7 @@ typedef enum {
 class AudioSink {
 public:
     // Callback returns the number of bytes actually written to the buffer.
-    typedef size_t (*AudioCallback)(std::unique_ptr<uint8_t[]> &buffer);
+    typedef size_t (*AudioCallback)(std::unique_ptr<uint8_t[]> &buffer, void *cookie);
 
     virtual             ~AudioSink() {}
 
@@ -38,7 +38,7 @@ public:
     // audio data.
     virtual int open(uint32_t sampleRate, int channelCount,
 					 pcm_format_t format=PCM_FORMAT_FIXED_8,
-					 AudioCallback cb = NULL) = 0;
+					 AudioCallback cb = NULL, void *cookie = NULL) = 0;
 
 	virtual int start() = 0;
 };
