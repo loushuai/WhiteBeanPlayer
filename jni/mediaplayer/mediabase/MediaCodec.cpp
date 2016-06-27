@@ -13,28 +13,42 @@ using namespace std;
 
 namespace whitebean {
 
-int Codec::open(std::shared_ptr<AVCodecContext> codecCtxPtr)
+int Codec::open_l()
 {
 	AVCodec* codec;
 	
-	if (!codecCtxPtr) {
-		LOGE("Input codec is NULL");
+	mTracksPtr = mSource->getTracksPtr();
+	if (!mTracksPtr) {
+		LOGE("Invalid tracks");
 		return -1;
 	}
 	
-	codec = avcodec_find_decoder(codecCtxPtr->codec_id);
+	mAVFmtCtxPtr = mSource->getFmtCtxPtr();	
+	if (mStreamId < 0 || mStreamId >= mAVFmtCtxPtr->nb_streams) {
+		LOGE("Invalid stream");
+		return -1;
+	}
+
+	mCodecPtr = shared_ptr<AVCodecContext>(mAVFmtCtxPtr->streams[mStreamId]->codec,
+										   [](AVCodecContext *p){avcodec_close(p);});
+	if(!mCodecPtr) {
+		LOGE("Invalid codec");
+		return -1;
+	}
+	
+	codec = avcodec_find_decoder(mCodecPtr->codec_id);
 	if (!codec) {
 		LOGE("Can't find decoder");
 		return -1;
 	}
 
-	LOGD("Audio codec id %d", codecCtxPtr->codec_id);
+	LOGD("Video/Audio codec id %d", mCodecPtr->codec_id);
 
-	if (avcodec_open2(codecCtxPtr.get(), codec, NULL) < 0) {
+	if (avcodec_open2(mCodecPtr.get(), codec, NULL) < 0) {
 		LOGE("open decoder failed");
 		return -1;
-	}
-
+	}	
+	
 	return 0;
 }
 
@@ -47,29 +61,11 @@ AudioDecoder::AudioDecoder()
 
 int AudioDecoder::open(shared_ptr<MediaSource> source)
 {
-	mStreamId = source->getAudioStreamId();
+	mSource = source;
+	mStreamId = mSource->getAudioStreamId();
 
-	mTracksPtr = source->getTracksPtr();
-	if (!mTracksPtr) {
-		LOGE("Invalid tracks");
-		return -1;
-	}
-	
-	mAVFmtCtxPtr = source->getFmtCtxPtr();	
-	if (mStreamId < 0 || mStreamId >= mAVFmtCtxPtr->nb_streams) {
-		LOGE("Invalid stream");
-		return -1;
-	}
-
-	mCodecPtr = shared_ptr<AVCodecContext>(mAVFmtCtxPtr->streams[mStreamId]->codec,
-										   [](AVCodecContext *p){avcodec_close(p);});
-	if(!mCodecPtr) {
-		LOGE("Invalid codec");
-		return -1;
-	}
-
-	if (Codec::open(mCodecPtr) < 0) {
-		LOGE("Open codec failed");
+	if (open_l() < 0) {
+		LOGE("Open audio codec failed");
 		return -1;
 	}
 
@@ -252,15 +248,188 @@ void AudioDecoder::threadEntry()
 	LOGD("Audio decoder loop exit");
 }
 
-bool VideoDecoder::read(FrameBuffer &frmbuf)
+VideoDecoder::VideoDecoder()
+: mWidth(0)
+, mHeight(0)  
 {
+
+}
+
+int VideoDecoder::open(shared_ptr<MediaSource> source)
+{
+	mSource = source;
+	mStreamId = mSource->getVideoStreamId();
+
+	if (open_l() < 0) {
+		LOGE("Open video codec failed");
+		return -1;
+	}
+
+	mWidth = mCodecPtr->width;
+	mHeight = mCodecPtr->height;
+
+	if (initFilters() < 0) {
+		LOGD("Init video filter failed");
+		return -1;
+	}
 
 	return 0;
 }
 
+bool VideoDecoder::read(FrameBuffer &frmbuf)
+{
+	if (mFrameQueue.empty()) {
+		return false;
+	}
+
+	frmbuf = mFrameQueue.front();
+	mFrameQueue.pop();
+	
+	return true;
+}
+
 void VideoDecoder::threadEntry()
 {
+	int ret = 0;
+	int gotframe = 0;
 
+	LOGD("Video decoder loop enter");
+
+	for (;;) {
+		if (mStopped) {
+			break;
+		}
+
+		if (mFrameQueue.full()) {
+			LOGD("Video decoder frame queue full");
+			this_thread::sleep_for(chrono::milliseconds(10));
+			continue;			
+		}
+
+		PacketBuffer pktbuf;
+		if (!mTracksPtr->readVideo(pktbuf) || pktbuf.empty()) {
+			LOGD("Video decoder read packet failed");
+			this_thread::sleep_for(chrono::milliseconds(10));
+			continue;
+		}
+
+		LOGD("Audio decoder read packet ok");
+
+		FrameBuffer frmbuf, filtfrmbuf;
+
+		ret = avcodec_decode_video2(mCodecPtr.get(), frmbuf.getDataPtr(), &gotframe, pktbuf.getDataPtr());
+		if (ret < 0) {
+			LOGE("Video decode error %d", ret);
+			continue;
+		}
+		if (!gotframe) {
+			LOGE("Video decode failed");
+			continue;
+		}
+
+		LOGD("Video decoder frame success");
+
+		if (av_buffersrc_add_frame_flags(mFilterCtx.bufferSrcCtx, frmbuf.getDataPtr(), 0) < 0) {
+			LOGE("Error while feeding the audio filtergraph");
+			break;
+		}
+
+		LOGD("Video add filter frame success");
+
+		while (1) {
+			ret = av_buffersink_get_frame(mFilterCtx.bufferSinkCtx, filtfrmbuf.getDataPtr());
+			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+				break;
+			if (ret < 0)
+				goto end;
+		}
+
+		LOGD("Video filter frame success");
+
+		mFrameQueue.push(filtfrmbuf);		
+	}
+
+ end:
+	LOGD("Video decoder loop exit");	
+}
+
+int VideoDecoder::initFilters()
+{
+	char args[512];
+    int ret = 0;
+    AVFilter *vbuffersrc  = avfilter_get_by_name("buffer");
+    AVFilter *vbuffersink = avfilter_get_by_name("buffersink");
+    AVFilterInOut *outputs = avfilter_inout_alloc();
+    AVFilterInOut *inputs  = avfilter_inout_alloc();
+	enum AVPixelFormat pix_fmts[] = { AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE };
+
+	mFilterCtx.filterGraph = shared_ptr<AVFilterGraph>(avfilter_graph_alloc(),
+											 [](AVFilterGraph *p){avfilter_graph_free(&p);});
+    if (!inputs || !outputs || !mFilterCtx.filterGraph) {
+    	LOGE("Alloc filter graph failed");
+		ret = -1;
+    	goto end;
+    }
+
+	snprintf(args, sizeof(args),
+             "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+			 mCodecPtr->width, mCodecPtr->height,
+			 mCodecPtr->pix_fmt,
+			 mCodecPtr->time_base.num,
+			 mCodecPtr->time_base.den,
+			 mCodecPtr->sample_aspect_ratio.num,
+			 mCodecPtr->sample_aspect_ratio.den);
+	LOGD("Buffer args: %s", args);
+
+    ret = avfilter_graph_create_filter(&mFilterCtx.bufferSrcCtx, vbuffersrc, "in",
+                                       args, NULL, mFilterCtx.filterGraph.get());
+	if (ret < 0) {
+		LOGE("Create filter in failed");
+		goto end;
+	}
+
+    ret = avfilter_graph_create_filter(&mFilterCtx.bufferSinkCtx, vbuffersink, "out",
+                                       NULL, NULL, mFilterCtx.filterGraph.get());
+	if (ret < 0) {
+		LOGE("Create filter out failed");		
+		goto end;
+	}
+
+    ret = av_opt_set_int_list(mFilterCtx.bufferSinkCtx, "pix_fmts", pix_fmts,
+                              AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
+    if (ret < 0) {
+    	LOGE("Cannot set output pixel format");
+        goto end;
+    }	
+
+    outputs->name       = av_strdup("in");
+    outputs->filter_ctx = mFilterCtx.bufferSrcCtx;
+    outputs->pad_idx    = 0;
+    outputs->next       = NULL;
+
+    inputs->name       = av_strdup("out");
+    inputs->filter_ctx = mFilterCtx.bufferSinkCtx;
+    inputs->pad_idx    = 0;
+    inputs->next       = NULL;
+
+	//args is reused
+	snprintf(args, sizeof(args), "format=pix_fmts=yuv420p");
+	LOGD("audio filter output desc %s", args);
+    if ((ret = avfilter_graph_parse_ptr(mFilterCtx.filterGraph.get(), args,
+                                        &inputs, &outputs, NULL)) < 0) {
+		LOGE("Graph parse failed");
+		goto end;
+	}
+
+    if ((ret = avfilter_graph_config(mFilterCtx.filterGraph.get(), NULL)) < 0) {
+		LOGE("Graph config failed");
+        goto end;
+	}	
+end:
+    avfilter_inout_free(&inputs);
+    avfilter_inout_free(&outputs);
+	
+	return ret;
 }
 
 int MediaDecoder::open(shared_ptr<MediaSource> source, int streamid)
@@ -268,7 +437,7 @@ int MediaDecoder::open(shared_ptr<MediaSource> source, int streamid)
 	if (streamid == source->getAudioStreamId()) {
 		mDelegatePtr = unique_ptr<Codec>(new AudioDecoder);
 	} else if (streamid == source->getVideoStreamId()) {
-		//	   	mDelegatePtr = unique_ptr<Codec>(new VideoDecoder);
+	   	mDelegatePtr = unique_ptr<Codec>(new VideoDecoder);
 	} else {
 		LOGE("Unknown stream");
 		return -1;

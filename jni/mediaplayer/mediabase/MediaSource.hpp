@@ -26,6 +26,7 @@ public:
 	MediaSource(): mTracksPtr(new MediaTracks)
 				 , mVideoStreamId(-1)
 				 , mAudioStreamId(-1)
+				 , mEof(false)
 	{
 
 	}
@@ -52,6 +53,18 @@ public:
 	int getAudioStreamId() const {
 		return mAudioStreamId;
 	}
+
+	bool hasVideo() const {
+		return mVideoStreamId >= 0;
+	}
+
+	bool hasAudio() const {
+		return mAudioStreamId >= 0;
+	}
+
+	bool eof() const {
+		return mEof;
+	}
 private:
 	void threadEntry();
 	
@@ -59,6 +72,7 @@ private:
 	std::shared_ptr<MediaTracks>     mTracksPtr;
 	int mVideoStreamId;
 	int mAudioStreamId;
+	bool mEof;
 };
 	
 }

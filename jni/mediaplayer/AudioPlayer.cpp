@@ -63,7 +63,7 @@ size_t AudioPlayer::fillBuffer(std::unique_ptr<uint8_t[]> &buf)
 	FrameBuffer frmbuf;
  retry:
 	if (mDecoder.read(frmbuf)) {
-		size = frmbuf.size();
+		size = frmbuf.asize();
 		
 		LOGD("audio player get pcm ok, size %d", size);
 		

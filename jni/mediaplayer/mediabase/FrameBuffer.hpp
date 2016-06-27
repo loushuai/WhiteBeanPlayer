@@ -10,6 +10,10 @@
 
 #include "MediaBuffer.hpp"
 
+extern "C" {
+#include "libavutil/imgutils.h"	
+}
+
 namespace whitebean {
 
 class FrameBuffer : MediaBuffer<AVFrame> {
@@ -65,10 +69,14 @@ public:
 		return data.data[0] == nullptr;
 	}
 
-	int32_t size() const {
+	int32_t asize() const {
 		return data.channels
 		     * av_get_bytes_per_sample((enum AVSampleFormat) data.format)
 			 * data.nb_samples;
+	}
+
+	int32_t vsize() const {
+		return av_image_get_buffer_size((enum AVPixelFormat)data.format, data.width, data.height, 1);
 	}
 };
 	

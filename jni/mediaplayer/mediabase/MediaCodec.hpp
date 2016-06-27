@@ -46,8 +46,9 @@ public:
 protected:	
 	virtual void threadEntry() {}
 	virtual int initFilters() {return 0;}
-	int open(std::shared_ptr<AVCodecContext> codecCtxPtr);
+	int open_l();
 
+	std::shared_ptr<MediaSource>     mSource;
 	std::shared_ptr<AVFormatContext> mAVFmtCtxPtr;
 	std::shared_ptr<AVCodecContext>  mCodecPtr;
 	std::shared_ptr<MediaTracks>     mTracksPtr;
@@ -61,12 +62,12 @@ class AudioDecoder : public Codec {
 public:
 	AudioDecoder();
 
-	virtual int open(std::shared_ptr<MediaSource> source);	
-	virtual bool read(FrameBuffer &frmbuf);
+	virtual int open(std::shared_ptr<MediaSource> source) override;	
+	virtual bool read(FrameBuffer &frmbuf) override;
 
 private:
-	virtual void threadEntry();
-	virtual int initFilters();
+	virtual void threadEntry() override;
+	virtual int initFilters() override;
 	
 	int mSampleRate;
 	int mChannels;
@@ -75,10 +76,16 @@ private:
 
 class VideoDecoder : public Codec {
 public:
-	VideoDecoder() {}
-	virtual int open(std::shared_ptr<MediaSource> source);
-	virtual bool read(FrameBuffer &frmbuf);
-	virtual void threadEntry();
+	VideoDecoder();
+	virtual int open(std::shared_ptr<MediaSource> source) override;
+	virtual bool read(FrameBuffer &frmbuf) override;
+
+private:	
+	virtual void threadEntry() override;
+	virtual int initFilters() override;
+
+	int mWidth;
+	int mHeight;
 };
 
 class MediaDecoder {

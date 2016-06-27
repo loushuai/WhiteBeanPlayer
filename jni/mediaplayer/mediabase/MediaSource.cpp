@@ -5,6 +5,7 @@
  *      Author: loushuai
  */
 
+#include <errno.h>
 #include "log.hpp"
 #include "MediaSource.hpp"
 
@@ -22,7 +23,7 @@ int MediaSource::open(const string uri)
 	AVFormatContext *fmtptr = nullptr;
 	if ((avformat_open_input(&fmtptr, uri.c_str(), NULL, NULL) < 0)
 	|| (fmtptr == nullptr)) {
-		LOGE("open input failed");
+		LOGE("open input failed %s", strerror(errno));
 		goto failed;
 	}
 
@@ -90,6 +91,7 @@ void MediaSource::threadEntry()
 		if (ret < 0) {
 			if (ret == AVERROR_EOF) {
 				LOGD("EOF");
+				mEof = true;
 				break;
 			}
 
@@ -99,7 +101,7 @@ void MediaSource::threadEntry()
 //		LOGD("Packet in pts %lld", packet.pts);
 		PacketBuffer pktbuf(packet);
 		mTracksPtr->packetIn(pktbuf);
-		av_packet_unref(&packet);
+		av_packet_unref(&packet); // 
 	}
 
 	LOGD("Media source loop exit");
