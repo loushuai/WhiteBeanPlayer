@@ -59,7 +59,8 @@ LOCAL_SRC_FILES += mediaplayer/WhiteBeanPlayer.cpp \
 				   mediaplayer/mediabase/MediaSource.cpp \
 				   mediaplayer/mediabase/MediaTracks.cpp \
                    mediaplayer/mediabase/MediaCodec.cpp \
-                   mediaplayer/mediasink/audiosink/opensl/openslsink.cpp
+                   mediaplayer/mediasink/audiosink/opensl/openslsink.cpp \
+				   jni/whitebean_media_MediaPlayer.cpp
 
 LOCAL_STATIC_LIBRARIES := avformat avcodec avutil swresample avfilter swscale
 LOCAL_LDLIBS    += -lOpenSLES -lz -llog
@@ -75,6 +76,7 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/test \
 					$(LOCAL_PATH)/mediaplayer \
 				    $(LOCAL_PATH)/mediaplayer/mediasink/audiosink/opensl \
 					$(LOCAL_PATH)/mediaplayer/mediabase \
+					$(LOCAL_PATH)/include \
 				    $(LOCAL_PATH)/include/ffmpeg
 
 LOCAL_MODULE := test
