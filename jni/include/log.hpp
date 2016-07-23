@@ -11,9 +11,9 @@
 #include <stdio.h>
 #include <android/log.h>
 
-#define ANDROID_LOG 0
+#define ANDROID_LOG 1
 
-#define LOG_TAG    "FFPlayer"
+#define LOG_TAG    "WhiteBean"
 
 #define LOGD(fmt, ...) PRINT_LOG(ANDROID_LOG_DEBUG, LOG_TAG, fmt, ##__VA_ARGS__)
 #define LOGI(fmt, ...) PRINT_LOG(ANDROID_LOG_INFO, LOG_TAG, fmt, ##__VA_ARGS__)
