@@ -11,6 +11,7 @@
 #include "MediaBuffer.hpp"
 
 extern "C" {
+#include "libavformat/avformat.h"	
 #include "libavutil/imgutils.h"	
 }
 
@@ -20,12 +21,12 @@ class FrameBuffer : MediaBuffer<AVFrame> {
 public:
 	FrameBuffer() {
 		::memset(&data, 0, sizeof(AVFrame));
-		av_frame_unref(&data);		
+		av_frame_unref(&data);				
 	}
 	
 	FrameBuffer(const AVFrame &frame) {
 		::memset(&data, 0, sizeof(AVFrame));
-		av_frame_unref(&data);
+		av_frame_unref(&data);		
 		if (av_frame_ref(&data, &frame) != 0) {
 			data.data[0] = nullptr;
 		}
@@ -53,6 +54,11 @@ public:
 		av_frame_unref(&data);
 	}
 
+	void reset() {
+		av_frame_unref(&data);		
+		::memset(&data, 0, sizeof(AVFrame));		
+	}
+
 	const AVFrame& getData() const {
 		return data;
 	}
@@ -77,6 +83,38 @@ public:
 
 	int32_t vsize() const {
 		return av_image_get_buffer_size((enum AVPixelFormat)data.format, data.width, data.height, 1);
+	}
+
+	int getNumDataPlanes() const {
+		return AV_NUM_DATA_POINTERS;
+	}
+
+	uint8_t *getDataPlane(int plane) const {
+		return data.data[plane];
+	}
+
+	int getLineSize(int plane) const {
+		return data.linesize[plane];
+	}
+
+	int getWidth() const {
+		return data.width;
+	}
+
+	int getHeight() const {
+		return data.height;
+	}
+
+	int getFormat() const {
+		return data.format;
+	}
+
+	int64_t getPts() const {
+		return data.pkt_pts;
+	}
+
+	void setPts(int64_t pts) {
+		data.pkt_pts = pts;
 	}
 };
 	

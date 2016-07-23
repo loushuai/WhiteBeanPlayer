@@ -26,6 +26,8 @@ extern "C" {
 
 namespace whitebean {
 
+#define US_IN_SECOND 1000000
+
 struct FilterContext {
 	std::shared_ptr<AVFilterGraph>   filterGraph;
 	AVFilterContext *bufferSinkCtx;
@@ -39,6 +41,7 @@ public:
 
 	virtual int open(std::shared_ptr<MediaSource> source) = 0;	
 	virtual bool read(FrameBuffer &frmbuf) = 0;
+	virtual void timeScaleToUs(FrameBuffer &frmbuf);
 
 	virtual MetaData& getMetaData() {
 		return mMetaData;

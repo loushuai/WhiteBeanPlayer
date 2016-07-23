@@ -2,6 +2,7 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <android/native_window_jni.h>
 #include "../mediaplayer/WhiteBeanPlayer.hpp"
 #include "JNIHelp.h"
 
@@ -12,12 +13,55 @@ using namespace whitebean;
 
 struct fields_t {
     jfieldID    context;
+	jmethodID post_event;
 };
 static fields_t fields;
 
 static mutex sLock;
 static mutex sPlayerLock;
 static unordered_multimap<void *, shared_ptr<WhiteBeanPlayer> > sPlayers;
+
+class JNIMediaPlayerListener
+{
+public:
+    JNIMediaPlayerListener(JNIEnv* env, jobject thiz, jobject weak_thiz);
+    virtual ~JNIMediaPlayerListener();
+    virtual void notify(int msg, int ext1, int ext2);
+private:
+    JNIMediaPlayerListener();
+    jclass      mClass;     // Reference to MediaPlayer class
+    jobject     mObject;    // Weak ref to MediaPlayer Java object to call on
+};
+
+JNIMediaPlayerListener::JNIMediaPlayerListener(JNIEnv* env, jobject thiz, jobject weak_thiz)
+{
+	jclass clazz = env->GetObjectClass(thiz);
+    if (clazz == NULL) {
+        LOGE("Can't find android/media/MediaPlayer");
+        jniThrowException(env, "java/lang/Exception", NULL);
+        return;
+    }
+	mClass = (jclass)env->NewGlobalRef(clazz);
+
+	mObject  = env->NewGlobalRef(weak_thiz);
+}
+
+JNIMediaPlayerListener::~JNIMediaPlayerListener()
+{
+    // remove global references
+    JNIEnv *env = getJNIEnv();
+	if (env) {
+		env->DeleteGlobalRef(mObject);
+		env->DeleteGlobalRef(mClass);
+	}
+}
+
+void JNIMediaPlayerListener::notify(int msg, int ext1, int ext2)
+{
+	JNIEnv *env = getJNIEnv();
+    env->CallStaticVoidMethod(mClass, fields.post_event, mObject,
+            msg, ext1, ext2, NULL);	
+}
 
 static void incStrong(shared_ptr<WhiteBeanPlayer> sp)
 {
@@ -101,6 +145,31 @@ static void whitebean_media_MediaPlayer_setDataSourcePath(
     int opStatus = mp->setDataSource(pathStr);
 }
 
+static void setVideoSurface(JNIEnv *env, jobject thiz, jobject jsurface, jboolean mediaPlayerMustBeAlive)
+{
+	ANativeWindow *nativeWindow;
+	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
+    if (mp == NULL) {
+        if (mediaPlayerMustBeAlive) {
+            jniThrowException(env, "java/lang/IllegalStateException", NULL);
+        }
+        return;
+    }
+
+	nativeWindow = ANativeWindow_fromSurface(env, jsurface);
+	if (!nativeWindow) {
+        jniThrowException(env, "java/lang/IllegalArgumentException", NULL);
+        return;
+	}
+
+	mp->setVideoSurface(nativeWindow);
+}
+
+static void whitebean_media_MediaPlayer_setVideoSurface(JNIEnv *env, jobject thiz, jobject jsurface)
+{
+    setVideoSurface(env, thiz, jsurface, true /* mediaPlayerMustBeAlive */);
+}
+
 static void whitebean_media_MediaPlayer_prepare(JNIEnv *env, jobject thiz)
 {
 	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
@@ -139,6 +208,12 @@ static void whitebean_media_MediaPlayer_native_init(JNIEnv *env)
 		LOGE("Get field failed");
         return;
     }
+
+    fields.post_event = env->GetStaticMethodID(clazz, "postEventFromNative",
+                                               "(Ljava/lang/Object;IIILjava/lang/Object;)V");
+    if (fields.post_event == NULL) {
+        return;
+    }	
 }
 
 static void whitebean_media_MediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this)
@@ -156,6 +231,7 @@ static void whitebean_media_MediaPlayer_native_setup(JNIEnv *env, jobject thiz, 
 
 static JNINativeMethod gMethods[] = {
 	{"_setDataSource",        "(Ljava/lang/String;)V",          (void *)whitebean_media_MediaPlayer_setDataSourcePath},
+	{"_setVideoSurface",    "(Landroid/view/Surface;)V",        (void *)whitebean_media_MediaPlayer_setVideoSurface},
     {"prepare",             "()V",                              (void *)whitebean_media_MediaPlayer_prepare},
     {"_start",              "()V",                              (void *)whitebean_media_MediaPlayer_start},	
 	{"native_init",         "()V",                              (void *)whitebean_media_MediaPlayer_native_init},
@@ -191,6 +267,8 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
     JNIEnv* env = nullptr;
     jint result = -1;
+
+	sVm = vm;
 
     if (vm->GetEnv((void**) &env, JNI_VERSION_1_4) != JNI_OK) {
         LOGE("ERROR: GetEnv failed");

@@ -65,17 +65,24 @@ size_t AudioPlayer::fillBuffer(std::unique_ptr<uint8_t[]> &buf)
 	if (mDecoder.read(frmbuf)) {
 		size = frmbuf.asize();
 		
-		LOGD("audio player get pcm ok, size %d", size);
+		LOGD("audio player get pcm ok, size %d, pts %lld", size, frmbuf.getPts());
 		
 		unique_ptr<uint8_t[]> pcmbuf(new uint8_t[size]);
 		memcpy(pcmbuf.get(), frmbuf.getData().data[0], size);
 		buf = std::move(pcmbuf);
+
+		mCurTimeUs = frmbuf.getPts();
 	} else {
 		this_thread::sleep_for(chrono::milliseconds(10));
 		goto retry;
 	}
 
 	return size;
+}
+
+int64_t AudioPlayer::getCurTime() const
+{
+	return mCurTimeUs;
 }
 
 //static

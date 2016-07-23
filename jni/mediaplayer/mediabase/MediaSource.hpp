@@ -65,6 +65,10 @@ public:
 	bool eof() const {
 		return mEof;
 	}
+
+	AVRational getTimeScaleOfTrack(int idx) {
+		return mAVFmtCtxPtr->streams[idx]->time_base;
+	}
 private:
 	void threadEntry();
 	

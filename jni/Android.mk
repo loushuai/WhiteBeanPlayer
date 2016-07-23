@@ -60,10 +60,13 @@ LOCAL_SRC_FILES += mediaplayer/WhiteBeanPlayer.cpp \
 				   mediaplayer/mediabase/MediaTracks.cpp \
                    mediaplayer/mediabase/MediaCodec.cpp \
                    mediaplayer/mediasink/audiosink/opensl/openslsink.cpp \
+				   mediaplayer/mediasink/videosink/egl/EglSink.cpp \
+				   mediaplayer/mediasink/videosink/egl/GLRenderer.cpp \
+				   mediaplayer/mediasink/videosink/egl/GLRendererYUV420p.cpp \
 				   jni/whitebean_media_MediaPlayer.cpp
 
 LOCAL_STATIC_LIBRARIES := avformat avcodec avutil swresample avfilter swscale
-LOCAL_LDLIBS    += -lOpenSLES -lz -llog
+LOCAL_LDLIBS    += -lOpenSLES -lGLESv2 -lEGL -lz -llog -landroid
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -80,13 +83,16 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/test \
 				    $(LOCAL_PATH)/include/ffmpeg
 
 LOCAL_MODULE := test
-LOCAL_SRC_FILES := test/testrunner.cpp 
+#LOCAL_SRC_FILES := test/testrunner.cpp 
 #LOCAL_SRC_FILES += test/timedeventqueuetest.cpp
 #LOCAL_SRC_FILES += test/opensltest.cpp
 #LOCAL_SRC_FILES += test/metadatatest.cpp
 #LOCAL_SRC_FILES += test/mediasourcetest.cpp
 #LOCAL_SRC_FILES += test/audiocodectest.cpp
-LOCAL_SRC_FILES += test/audioplayer.cpp
+#LOCAL_SRC_FILES += test/audioplayer.cpp
+#LOCAL_SRC_FILES += test/mediaplayertest.cpp
+LOCAL_SRC_FILES += test/whitebeanplayer.cpp
+#LOCAL_SRC_FILES += test/videodecodetest.cpp
 
 LOCAL_SHARED_LIBRARIES += libwhitebean
 

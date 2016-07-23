@@ -52,6 +52,14 @@ int Codec::open_l()
 	return 0;
 }
 
+void Codec::timeScaleToUs(FrameBuffer &frmbuf)
+{
+	if (mSource) {
+		AVRational time_base = mSource->getTimeScaleOfTrack(mStreamId);
+		frmbuf.setPts(frmbuf.getPts()*US_IN_SECOND*time_base.num/time_base.den);
+	}
+}
+
 AudioDecoder::AudioDecoder()
 : mSampleRate(0)
 , mChannels(0)
@@ -242,6 +250,7 @@ void AudioDecoder::threadEntry()
 
 		LOGD("Audio filter frame success");
 
+		timeScaleToUs(filtfrmbuf);
 		mFrameQueue.push(filtfrmbuf);
 	}
  end:
@@ -279,6 +288,7 @@ int VideoDecoder::open(shared_ptr<MediaSource> source)
 bool VideoDecoder::read(FrameBuffer &frmbuf)
 {
 	if (mFrameQueue.empty()) {
+		frmbuf.reset();
 		return false;
 	}
 
@@ -346,6 +356,7 @@ void VideoDecoder::threadEntry()
 
 		LOGD("Video filter frame success");
 
+		timeScaleToUs(filtfrmbuf);
 		mFrameQueue.push(filtfrmbuf);		
 	}
 

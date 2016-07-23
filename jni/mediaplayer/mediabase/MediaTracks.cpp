@@ -27,7 +27,7 @@ void MediaTracks::packetIn(PacketBuffer &pktbuf)
 {
 	if (pktbuf.getData().stream_index == mVideoStreamId) {
 		LOGD("Packet in video packet %lld", pktbuf.getData().pts);
-		//		mVideoQueue.push(pktbuf);
+		mVideoQueue.push(pktbuf);
 	} else if (pktbuf.getData().stream_index == mAudioStreamId) {
 		LOGD("Packet in audio packet %lld", pktbuf.getData().pts);
 		mAudioQueue.push(pktbuf);

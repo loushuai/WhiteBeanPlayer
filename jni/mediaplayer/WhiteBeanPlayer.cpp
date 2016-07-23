@@ -7,6 +7,7 @@
 
 #include "log.hpp"
 #include "WhiteBeanPlayer.hpp"
+#include "mediasink/videosink/egl/EglSink.hpp"
 
 extern "C" {
 #include "libavformat/avformat.h"
@@ -37,11 +38,14 @@ WhiteBeanPlayer::WhiteBeanPlayer()
 : mQueueStarted(false)
 , mFlags(0)
 , mIsAsyncPrepare(false)
+, mVideoEventPending(false)
 {
 	LOGD("WhiteBeanPlayer()");
 	av_register_all();
 	avcodec_register_all();
-	avfilter_register_all();	
+	avfilter_register_all();
+
+	mVideoEvent = shared_ptr<WhiteBeanEvent>(new WhiteBeanEvent(this, &WhiteBeanPlayer::onVideoEvent));
 }
 
 WhiteBeanPlayer::~WhiteBeanPlayer()
@@ -60,6 +64,21 @@ int WhiteBeanPlayer::setDataSource(const string uri)
 		mStats.mURI = mUri;
 	}
 
+	return 0;
+}
+
+int WhiteBeanPlayer::initVideoDecoder()
+{
+	int ret = 0;
+
+	ret = mVideoDecoder.open(mSourcePtr, mSourcePtr->getVideoStreamId());
+	if (ret < 0) {
+		LOGD("Open video decoder failed");
+		return -1;
+	}
+
+	mVideoDecoder.start();
+	
 	return 0;
 }
 
@@ -145,15 +164,72 @@ void WhiteBeanPlayer::onPrepareAsyncEvent()
 	
 	mSourcePtr->start();
 
+	if (mSourcePtr->hasVideo()) {
+		initVideoDecoder();
+	}
+
 	modifyFlags((PREPARING|PREPARE_CANCELLED|PREPARING_CONNECTED), CLEAR);
 	modifyFlags(PREPARED, SET);
  out:
 	mPreparedCondition.notify_all();
 }
 
+void WhiteBeanPlayer::onVideoEvent()
+{
+	unique_lock<mutex> autoLock(mLock);
+
+	LOGD("onVideoEvent");
+
+	mVideoEventPending = false;
+
+	if (!mVideoSinkPtr) {		
+		initRenderer_l();
+	}
+
+	if (mVideoSinkPtr) {
+		bool ret = false;
+
+		if (mVideoBuffer.empty()) {
+			ret = mVideoDecoder.read(mVideoBuffer);
+		}
+
+		if (!mVideoBuffer.empty() && videoNeedRender(mVideoBuffer)) {
+			mVideoSinkPtr->display(mVideoBuffer);
+			ret = mVideoDecoder.read(mVideoBuffer);
+		}
+	}
+
+	postVideoEvent_l();
+}
+
+void WhiteBeanPlayer::postVideoEvent_l(int64_t delayUs)
+{
+	if (mVideoEventPending) {
+		return;
+	}
+
+	mVideoEventPending = true;
+	mQueue.postEventWithDelay(mVideoEvent, delayUs < 0 ? 10000 : delayUs);
+}
+	
 void WhiteBeanPlayer::reset_l()
 {
 	mUri = "";
+}
+
+void WhiteBeanPlayer::initRenderer_l()
+{
+	if (!mNativeWindow) {
+		LOGE("Native window is null");
+		return;
+	}
+
+	mVideoSinkPtr = shared_ptr<VideoSink>(new EglSink(mNativeWindow));
+
+	if (mVideoSinkPtr->init()) {
+		LOGE("Video sink init failed");
+		return;
+	}
 }
 
 int WhiteBeanPlayer::play()
@@ -183,6 +259,10 @@ int WhiteBeanPlayer::play()
 		}
 	}
 
+	if (mSourcePtr->hasVideo()) {
+		postVideoEvent_l();
+	}
+
 	return 0;
 }
 
@@ -209,6 +289,30 @@ void WhiteBeanPlayer::modifyFlags(unsigned value, FlagMode mode)
 		unique_lock<mutex> autoLock(mStateLock);
 		mStats.mFlags = mFlags;
 	}
+}
+
+/* 
+ *   return: 1 render, 0 not render
+ */	
+int WhiteBeanPlayer::videoNeedRender(FrameBuffer &frm)
+{
+	int64_t audioTimeUs = -1, videoTimeUs = -1;
+	if (mAudioPlayerPtr) {
+		audioTimeUs = mAudioPlayerPtr->getCurTime();
+	}
+
+	videoTimeUs = frm.getPts();
+	int64_t latenessUs = videoTimeUs - audioTimeUs;
+
+	//debug
+	LOGD("Time stames: video %lld, audio %lld, lateness %lld",
+		 videoTimeUs, audioTimeUs, latenessUs);
+	
+	if (latenessUs < -10000) {
+		return 1;
+	}
+
+	return 0;
 }
 	
 }

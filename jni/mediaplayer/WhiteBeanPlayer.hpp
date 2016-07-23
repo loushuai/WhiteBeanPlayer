@@ -11,8 +11,11 @@
 #include <string>
 #include <mutex>
 #include <memory>
+#include <android/native_window_jni.h>
 #include "TimedEventQueue.h"
 #include "AudioPlayer.hpp"
+#include "mediasink/videosink/VideoSink.hpp"
+#include "mediasink/videosink/egl/EglSink.hpp"
 
 namespace whitebean {
 class WhiteBeanPlayer {
@@ -25,8 +28,15 @@ public:
 	int prepareAsync();
 	void reset();
 	int play();
+	void notify(int msg, int ext1, int ext2);
+
+	void setVideoSurface(ANativeWindow *nativeWindow) {
+		mNativeWindow = nativeWindow;
+	}
 
 private:
+	friend struct WhiteBeanEvent;
+	
     enum {
         PLAYING             = 0x01,
         LOOPING             = 0x02,
@@ -63,11 +73,15 @@ private:
 	mutable std::mutex mLock;
 	mutable std::mutex mStateLock;
 	std::condition_variable mPreparedCondition;
-	
+
+	ANativeWindow *mNativeWindow;
     TimedEventQueue mQueue;
     bool mQueueStarted;
 	std::shared_ptr<MediaSource> mSourcePtr;
-	std::shared_ptr<AudioPlayer> mAudioPlayerPtr;	
+	std::shared_ptr<AudioPlayer> mAudioPlayerPtr;
+	std::shared_ptr<VideoSink>   mVideoSinkPtr;
+	MediaDecoder mVideoDecoder;
+	FrameBuffer mVideoBuffer;
 	
     enum FlagMode {
         SET,
@@ -81,16 +95,23 @@ private:
 	bool mIsAsyncPrepare;
 
 	std::shared_ptr<TimedEventQueue::Event> mAsyncPrepareEvent;
+	std::shared_ptr<TimedEventQueue::Event> mVideoEvent;
+	bool mVideoEventPending;
 	
 	struct Stats {
 		std::string mURI;
 		uint32_t mFlags;	
 	} mStats;
 
+	void postVideoEvent_l(int64_t delayUs = -1);
+	
 	int prepareAsync_l();
+	void onVideoEvent();
 	void onPrepareAsyncEvent();
 	void reset_l();
-
+	void initRenderer_l();
+	int initVideoDecoder();
+	int videoNeedRender(FrameBuffer &frm);
 };
 
 	
