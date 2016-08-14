@@ -24,6 +24,7 @@ enum {
     kKeyBitRate           = 'brte',  // int32_t (bps)
     kKeyColorFormat       = 'colf',
 	kKeyTime              = 'time',  // int64_t (usecs)
+	kKeyDuration          = 'dura',  // int64_t (usecs)
 };
 
 class MetaData {

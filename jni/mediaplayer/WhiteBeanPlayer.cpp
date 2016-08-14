@@ -39,6 +39,8 @@ WhiteBeanPlayer::WhiteBeanPlayer()
 , mFlags(0)
 , mIsAsyncPrepare(false)
 , mVideoEventPending(false)
+, mVideoPosition(0)
+, mDurationUs(0)
 {
 	LOGD("WhiteBeanPlayer()");
 	av_register_all();
@@ -51,6 +53,12 @@ WhiteBeanPlayer::WhiteBeanPlayer()
 WhiteBeanPlayer::~WhiteBeanPlayer()
 {
 	LOGD("~WhiteBeanPlayer()");
+}
+
+void WhiteBeanPlayer::setListener(shared_ptr<MediaPlayerListener> &listener)
+{
+	unique_lock<mutex> autoLock(mLock);
+	mListener = listener;
 }
 
 int WhiteBeanPlayer::setDataSource(const string uri)
@@ -123,6 +131,10 @@ int WhiteBeanPlayer::prepare()
 		mPreparedCondition.wait(autoLock);
 	}
 
+	finishAsync_l();
+
+	notifyListener(MEDIA_PREPARED);
+	
 	LOGD("Prepare finish");
 	
 	return 0;
@@ -146,6 +158,14 @@ int WhiteBeanPlayer::prepareAsync_l()
     mQueue.postEvent(mAsyncPrepareEvent);	
 	
 	return 0;
+}
+
+void WhiteBeanPlayer::finishAsync_l()
+{
+	int64_t durationUs;
+	if (mSourcePtr->getFormat()->findInt64(kKeyDuration, durationUs)) {
+		mDurationUs = durationUs;
+	}
 }
 
 void WhiteBeanPlayer::onPrepareAsyncEvent()
@@ -195,6 +215,7 @@ void WhiteBeanPlayer::onVideoEvent()
 
 		if (!mVideoBuffer.empty() && videoNeedRender(mVideoBuffer)) {
 			mVideoSinkPtr->display(mVideoBuffer);
+			mVideoPosition = mVideoBuffer.getPts();
 			ret = mVideoDecoder.read(mVideoBuffer);
 		}
 	}
@@ -217,6 +238,31 @@ void WhiteBeanPlayer::reset_l()
 	mUri = "";
 }
 
+void WhiteBeanPlayer::stop()
+{
+	LOGD("WhiteBean stop");
+	
+    if (mQueueStarted) {
+        mQueue.stop();
+        mQueueStarted = false;
+    }
+
+	if (mSourcePtr) {
+		mSourcePtr->stop();
+	}
+	
+	if (mAudioPlayerPtr) {
+		mAudioPlayerPtr->stop();
+	}
+
+	mVideoDecoder.stop();
+}
+
+void WhiteBeanPlayer::release()
+{
+	
+}
+
 void WhiteBeanPlayer::initRenderer_l()
 {
 	if (!mNativeWindow) {
@@ -235,6 +281,12 @@ void WhiteBeanPlayer::initRenderer_l()
 int WhiteBeanPlayer::play()
 {
 	LOGD("Play enter");
+
+	unique_lock<mutex> autoLock(mLock);
+
+    if (mFlags & PLAYING) {
+        return 0;
+    }
 	
 	if (!(mFlags & PREPARED)) {
 		return -1;
@@ -254,14 +306,32 @@ int WhiteBeanPlayer::play()
 				return -1;
 			}
 
-			mAudioPlayerPtr->setSource(mSourcePtr);
-			mAudioPlayerPtr->start();
+			mAudioPlayerPtr->setSource(mSourcePtr);			
 		}
+		mAudioPlayerPtr->start();
 	}
 
 	if (mSourcePtr->hasVideo()) {
 		postVideoEvent_l();
 	}
+
+	return 0;
+}
+
+int WhiteBeanPlayer::pause()
+{
+	unique_lock<mutex> autoLock(mLock);
+	
+	if (!(mFlags & PLAYING)) {
+		return 0;
+	}
+
+	if (mAudioPlayerPtr) {
+		mAudioPlayerPtr->pause();
+	}
+	cancelPlayerEvents();
+
+	modifyFlags(PLAYING, CLEAR);
 
 	return 0;
 }
@@ -313,6 +383,50 @@ int WhiteBeanPlayer::videoNeedRender(FrameBuffer &frm)
 	}
 
 	return 0;
+}
+
+void WhiteBeanPlayer::notifyListener(int msg, int ext1, int ext2)
+{
+	LOGD("notifyListener enter");
+	if (mListener) {
+		LOGD("notify");
+		mListener->notify(msg, ext1, ext2);
+	}
+}
+
+bool WhiteBeanPlayer::isPlaying() const
+{
+	return mFlags & PLAYING;
+}
+
+int WhiteBeanPlayer::getCurrentPosition()
+{
+	unique_lock<mutex> autoLock(mLock);
+	int64_t curPos = 0;
+
+	if (mAudioPlayerPtr) {
+		curPos = mAudioPlayerPtr->getCurTime();
+	}
+
+	curPos = mVideoPosition > curPos ? mVideoPosition : curPos;
+
+	return curPos/1000;
+}
+
+int WhiteBeanPlayer::getDuration()
+{
+	unique_lock<mutex> autoLock(mLock);
+	if (mDurationUs >= 0) {
+		return mDurationUs/1000;
+	}
+
+	return -1;
+}
+
+void WhiteBeanPlayer::cancelPlayerEvents()
+{
+	mQueue.cancelEvent(mVideoEvent->eventID());
+	mVideoEventPending = false;
 }
 	
 }

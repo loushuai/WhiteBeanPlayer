@@ -35,6 +35,10 @@ public:
 		mRunning = false;
 	}
 
+	bool isRunning() const {
+		return mRunning;
+	}
+
 protected:
 	static void *ThreadWrapper(void *me) {
 		MediaThread *th = (MediaThread*)me;

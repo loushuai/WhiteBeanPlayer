@@ -21,6 +21,12 @@ MediaSource::~MediaSource()
 int MediaSource::open(const string uri)
 {
 	AVFormatContext *fmtptr = nullptr;
+	
+	mFormat = make_shared<MetaData>();
+	if (!mFormat) {
+		goto failed;
+	}
+	
 	if ((avformat_open_input(&fmtptr, uri.c_str(), NULL, NULL) < 0)
 	|| (fmtptr == nullptr)) {
 		LOGE("open input failed %s", strerror(errno));
@@ -53,6 +59,9 @@ int MediaSource::open(const string uri)
 
 	mAVFmtCtxPtr = shared_ptr<AVFormatContext>(fmtptr,
 				   [](AVFormatContext *p){avformat_close_input(&p);});
+
+	LOGD("Duration %lld", mAVFmtCtxPtr->duration);
+	mFormat->setInt64(kKeyDuration, mAVFmtCtxPtr->duration);
 
 	LOGD("Media source open success");
 	

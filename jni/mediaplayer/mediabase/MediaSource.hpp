@@ -46,6 +46,10 @@ public:
 		return mTracksPtr;
 	}
 
+	std::shared_ptr<MetaData> getFormat() const {
+		return mFormat;
+	}
+
 	int getVideoStreamId() const {
 		return mVideoStreamId;
 	}
@@ -74,6 +78,7 @@ private:
 	
 	std::shared_ptr<AVFormatContext> mAVFmtCtxPtr;
 	std::shared_ptr<MediaTracks>     mTracksPtr;
+	std::shared_ptr<MetaData>        mFormat;
 	int mVideoStreamId;
 	int mAudioStreamId;
 	bool mEof;

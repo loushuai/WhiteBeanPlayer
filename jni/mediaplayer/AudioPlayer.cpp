@@ -27,6 +27,11 @@ int AudioPlayer::start()
 		return -1;
 	}
 
+	if (mPaused) {
+		mPaused = 0;
+		return 0;
+	}
+
 	ret = mDecoder.open(mSourcePtr, audioid);
 	if (ret < 0) {
 		LOGE("Open decoder failed");
@@ -57,11 +62,36 @@ int AudioPlayer::start()
 	return 0;
 }
 
+int AudioPlayer::pause()
+{
+	mPaused = 1;
+
+	return 0;
+}
+
+void AudioPlayer::stop()
+{
+	LOGD("AudioPlayer stop");
+	mAbout = true;
+	mDecoder.stop();
+	mSinkPtr->stop();
+	LOGD("AudioPlayer stop exit");	
+}
+
 size_t AudioPlayer::fillBuffer(std::unique_ptr<uint8_t[]> &buf)
 {
 	size_t size = 0;
 	FrameBuffer frmbuf;
  retry:
+	if (mAbout) {		
+		return 0;
+	}
+
+	if (mPaused) {
+		this_thread::sleep_for(chrono::milliseconds(10));
+		goto retry;
+	}
+	
 	if (mDecoder.read(frmbuf)) {
 		size = frmbuf.asize();
 		

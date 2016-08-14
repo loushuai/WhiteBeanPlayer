@@ -110,6 +110,12 @@ public:
 		return -1;
 	}
 
+	void stop() {
+		if (mDelegatePtr) {
+			mDelegatePtr->stop();
+		}
+	}
+
 	MetaData& getMetaData () {
 		return mDelegatePtr->getMetaData();
 	}

@@ -41,6 +41,7 @@ public:
 					 AudioCallback cb = NULL, void *cookie = NULL) = 0;
 
 	virtual int start() = 0;
+	virtual void stop() = 0;
 };
      
 }

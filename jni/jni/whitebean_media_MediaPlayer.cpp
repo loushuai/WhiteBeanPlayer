@@ -9,6 +9,7 @@
 using namespace std;
 using namespace whitebean;
 
+#define CLASS_NAME "com/whitebean/media/MediaPlayer"
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
 
 struct fields_t {
@@ -21,7 +22,7 @@ static mutex sLock;
 static mutex sPlayerLock;
 static unordered_multimap<void *, shared_ptr<WhiteBeanPlayer> > sPlayers;
 
-class JNIMediaPlayerListener
+class JNIMediaPlayerListener : public MediaPlayerListener
 {
 public:
     JNIMediaPlayerListener(JNIEnv* env, jobject thiz, jobject weak_thiz);
@@ -58,6 +59,7 @@ JNIMediaPlayerListener::~JNIMediaPlayerListener()
 
 void JNIMediaPlayerListener::notify(int msg, int ext1, int ext2)
 {
+	LOGD("jni notify");
 	JNIEnv *env = getJNIEnv();
     env->CallStaticVoidMethod(mClass, fields.post_event, mObject,
             msg, ext1, ext2, NULL);	
@@ -119,7 +121,7 @@ static shared_ptr<WhiteBeanPlayer> setMediaPlayer(JNIEnv* env, jobject thiz,
 	return ret;
 }
 
-static void whitebean_media_MediaPlayer_setDataSourcePath(
+static void com_whitebean_media_MediaPlayer_setDataSourcePath(
 		    JNIEnv *env, jobject thiz, jstring path) {
 	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
 	if (!mp) {
@@ -165,12 +167,12 @@ static void setVideoSurface(JNIEnv *env, jobject thiz, jobject jsurface, jboolea
 	mp->setVideoSurface(nativeWindow);
 }
 
-static void whitebean_media_MediaPlayer_setVideoSurface(JNIEnv *env, jobject thiz, jobject jsurface)
+static void com_whitebean_media_MediaPlayer_setVideoSurface(JNIEnv *env, jobject thiz, jobject jsurface)
 {
     setVideoSurface(env, thiz, jsurface, true /* mediaPlayerMustBeAlive */);
 }
 
-static void whitebean_media_MediaPlayer_prepare(JNIEnv *env, jobject thiz)
+static void com_whitebean_media_MediaPlayer_prepare(JNIEnv *env, jobject thiz)
 {
 	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
     if (mp == NULL ) {
@@ -181,7 +183,7 @@ static void whitebean_media_MediaPlayer_prepare(JNIEnv *env, jobject thiz)
 	int opStatus = mp->prepare();
 }
 
-static void whitebean_media_MediaPlayer_start(JNIEnv *env, jobject thiz)
+static void com_whitebean_media_MediaPlayer_start(JNIEnv *env, jobject thiz)
 {
 	LOGD("start");
 	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
@@ -193,11 +195,79 @@ static void whitebean_media_MediaPlayer_start(JNIEnv *env, jobject thiz)
 	int opStatus = mp->play();
 }
 
-static void whitebean_media_MediaPlayer_native_init(JNIEnv *env)
+static void com_whitebean_media_MediaPlayer_pause(JNIEnv *env, jobject thiz)
+{
+	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
+    if (mp == NULL ) {
+        jniThrowException(env, "java/lang/IllegalStateException", NULL);
+        return;
+    }
+
+	mp->pause();
+}
+
+static jboolean com_whitebean_media_MediaPlayer_isPlaying(JNIEnv *env, jobject thiz)
+{
+	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
+    if (mp == NULL ) {
+        jniThrowException(env, "java/lang/IllegalStateException", NULL);
+        return false;
+    }
+
+	const jboolean is_playing = mp->isPlaying();
+
+	return is_playing;
+}
+
+static int64_t com_whitebean_media_MediaPlayer_getCurrentPosition(JNIEnv *env, jobject thiz)
+{
+	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
+	if (mp == NULL) {
+		return -1;
+	}
+
+	int64_t msec;
+	msec = mp->getCurrentPosition();
+	if (msec < 0) {
+		LOGD("Current position error");
+	}
+    return msec;
+}
+
+static int64_t com_whitebean_media_MediaPlayer_getDuration(JNIEnv *env, jobject thiz)
+{
+	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
+	if (mp == NULL) {
+		return -1;
+	}
+
+	int64_t msec;
+	msec = mp->getDuration();
+	if (msec < 0) {
+		LOGD("Get duration error");
+	}
+    return msec;	
+}
+
+static void com_whitebean_media_MediaPlayer_release(JNIEnv *env, jobject thiz)
+{
+	LOGD("release");
+	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
+	if (mp == NULL) {
+		return;
+	}
+
+	mp->stop();
+
+	shared_ptr<WhiteBeanPlayer> nullmp;
+	setMediaPlayer(env, thiz, nullmp);
+}
+
+static void com_whitebean_media_MediaPlayer_native_init(JNIEnv *env)
 {
     jclass clazz;
 
-    clazz = env->FindClass("whitebean/media/MediaPlayer");
+    clazz = env->FindClass(CLASS_NAME);
     if (clazz == NULL) {
 		LOGE("Find class failed");
         return;
@@ -216,7 +286,7 @@ static void whitebean_media_MediaPlayer_native_init(JNIEnv *env)
     }	
 }
 
-static void whitebean_media_MediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this)
+static void com_whitebean_media_MediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this)
 {
 	LOGD("native setup");
 	shared_ptr<WhiteBeanPlayer> mp(new WhiteBeanPlayer());
@@ -225,17 +295,26 @@ static void whitebean_media_MediaPlayer_native_setup(JNIEnv *env, jobject thiz, 
         return;
     }
 
+	shared_ptr<MediaPlayerListener> listener =
+		make_shared<JNIMediaPlayerListener>(env, thiz, weak_this);
+	mp->setListener(listener);
+
 	setMediaPlayer(env, thiz, mp);
 }
 
 
 static JNINativeMethod gMethods[] = {
-	{"_setDataSource",        "(Ljava/lang/String;)V",          (void *)whitebean_media_MediaPlayer_setDataSourcePath},
-	{"_setVideoSurface",    "(Landroid/view/Surface;)V",        (void *)whitebean_media_MediaPlayer_setVideoSurface},
-    {"prepare",             "()V",                              (void *)whitebean_media_MediaPlayer_prepare},
-    {"_start",              "()V",                              (void *)whitebean_media_MediaPlayer_start},	
-	{"native_init",         "()V",                              (void *)whitebean_media_MediaPlayer_native_init},
-	{"native_setup",        "(Ljava/lang/Object;)V",            (void *)whitebean_media_MediaPlayer_native_setup},
+	{"_setDataSource",        "(Ljava/lang/String;)V",          (void *)com_whitebean_media_MediaPlayer_setDataSourcePath},
+	{"_setVideoSurface",    "(Landroid/view/Surface;)V",        (void *)com_whitebean_media_MediaPlayer_setVideoSurface},
+    {"prepare",             "()V",                              (void *)com_whitebean_media_MediaPlayer_prepare},
+    {"_start",              "()V",                              (void *)com_whitebean_media_MediaPlayer_start},
+	{"_pause",              "()V",                              (void *)com_whitebean_media_MediaPlayer_pause},
+	{"isPlaying",           "()Z",                              (void *)com_whitebean_media_MediaPlayer_isPlaying},
+	{"getCurrentPosition",  "()J",                              (void *)com_whitebean_media_MediaPlayer_getCurrentPosition},
+	{"getDuration",         "()J",                              (void *)com_whitebean_media_MediaPlayer_getDuration},
+	{"_release",            "()V",                              (void *)com_whitebean_media_MediaPlayer_release},
+	{"native_init",         "()V",                              (void *)com_whitebean_media_MediaPlayer_native_init},
+	{"native_setup",        "(Ljava/lang/Object;)V",            (void *)com_whitebean_media_MediaPlayer_native_setup},
 };
 
 int jniRegisterNativeMethods(JNIEnv* env,
@@ -260,7 +339,7 @@ int jniRegisterNativeMethods(JNIEnv* env,
 
 static int register_android_media_MediaPlayer(JNIEnv *env)
 {
-	return jniRegisterNativeMethods(env, "whitebean/media/MediaPlayer", gMethods, NELEM(gMethods));
+	return jniRegisterNativeMethods(env, CLASS_NAME, gMethods, NELEM(gMethods));
 }
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved)

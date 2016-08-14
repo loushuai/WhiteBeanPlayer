@@ -19,15 +19,17 @@ namespace whitebean
 class OpenslSink : public AudioSink
 {
 public:
-  OpenslSink();
-  virtual ~OpenslSink();
+	OpenslSink();
+	virtual ~OpenslSink();
 
-  int open( uint32_t sampleRate, int channelCount,
+	int open( uint32_t sampleRate, int channelCount,
             pcm_format_t format=PCM_FORMAT_FIXED_8,
             AudioCallback cb = NULL,
 			void *cookie = NULL);
 
-  int start();
+	int start();
+
+	void stop();
 
 private:
 	/**

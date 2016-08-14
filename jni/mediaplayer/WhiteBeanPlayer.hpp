@@ -18,21 +18,35 @@
 #include "mediasink/videosink/egl/EglSink.hpp"
 
 namespace whitebean {
+
+class MediaPlayerListener
+{
+public:
+    virtual void notify(int msg, int ext1, int ext2) = 0;
+};
+	
 class WhiteBeanPlayer {
 public:
 	WhiteBeanPlayer();
 	~WhiteBeanPlayer();
 
+	void setListener(std::shared_ptr<MediaPlayerListener> &listener);
 	int setDataSource(const std::string uri);
 	int prepare();
 	int prepareAsync();
 	void reset();
+	void stop();
+	void release();
 	int play();
-	void notify(int msg, int ext1, int ext2);
+	int pause();
+	void notifyListener(int msg, int ext1 = 0, int ext2 = 0);
+	int getCurrentPosition();
+	int getDuration();
 
 	void setVideoSurface(ANativeWindow *nativeWindow) {
 		mNativeWindow = nativeWindow;
 	}
+	bool isPlaying() const;
 
 private:
 	friend struct WhiteBeanEvent;
@@ -68,8 +82,26 @@ private:
         TEXTPLAYER_INITIALIZED  = 0x20000,
 
         SLOW_DECODER_HACK   = 0x40000,
-    };
-	
+		};
+
+	enum media_event_type {
+		MEDIA_NOP               = 0, // interface test message
+		MEDIA_PREPARED          = 1,
+		MEDIA_PLAYBACK_COMPLETE = 2,
+		MEDIA_BUFFERING_UPDATE  = 3,
+		MEDIA_SEEK_COMPLETE     = 4,
+		MEDIA_SET_VIDEO_SIZE    = 5,
+		MEDIA_STARTED           = 6,
+		MEDIA_PAUSED            = 7,
+		MEDIA_STOPPED           = 8,
+		MEDIA_SKIPPED           = 9,
+		MEDIA_TIMED_TEXT        = 99,
+		MEDIA_ERROR             = 100,
+		MEDIA_INFO              = 200,
+		MEDIA_SUBTITLE_DATA     = 201,
+	};
+
+	std::shared_ptr<MediaPlayerListener> mListener;
 	mutable std::mutex mLock;
 	mutable std::mutex mStateLock;
 	std::condition_variable mPreparedCondition;
@@ -97,6 +129,9 @@ private:
 	std::shared_ptr<TimedEventQueue::Event> mAsyncPrepareEvent;
 	std::shared_ptr<TimedEventQueue::Event> mVideoEvent;
 	bool mVideoEventPending;
+
+	int64_t mVideoPosition;
+	int64_t mDurationUs;
 	
 	struct Stats {
 		std::string mURI;
@@ -104,8 +139,10 @@ private:
 	} mStats;
 
 	void postVideoEvent_l(int64_t delayUs = -1);
+	void cancelPlayerEvents();
 	
 	int prepareAsync_l();
+	void finishAsync_l();
 	void onVideoEvent();
 	void onPrepareAsyncEvent();
 	void reset_l();

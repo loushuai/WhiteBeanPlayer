@@ -71,6 +71,22 @@ int OpenslSink::start()
 	return 0;
 }
 
+void OpenslSink::stop()
+{
+	SLresult result;
+	
+	result = (*mPlayerPlay)->SetPlayState(mPlayerPlay, SL_PLAYSTATE_STOPPED);
+	if(SL_RESULT_SUCCESS != result){
+		LOGE("SetPlayState failed");
+		return;
+	}
+
+	if (mPlayerObject) {
+		(*mPlayerObject)->Destroy(mPlayerObject);
+		mPlayerObject = nullptr;
+	}
+}
+
 int OpenslSink::CreateEngine()
 {
 	SLresult result;
