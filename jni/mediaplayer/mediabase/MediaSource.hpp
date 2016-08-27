@@ -13,6 +13,7 @@
 #include <memory>
 #include "MediaTracks.hpp"
 #include "MediaThread.hpp"
+#include "MediaBase.hpp"
 
 extern "C" {
 #include "libavformat/avformat.h"
@@ -21,12 +22,16 @@ extern "C" {
 
 namespace whitebean {
 
-class MediaSource: public MediaThread {
+class MediaSource: public MediaBase {
 public:
 	MediaSource(): mTracksPtr(new MediaTracks)
 				 , mVideoStreamId(-1)
 				 , mAudioStreamId(-1)
 				 , mEof(false)
+				 , mSeeking(0)
+				 , mSeekTimeMs(-1)
+				 , mVideoReady(0)
+				 , mAudioReady(0)
 	{
 
 	}
@@ -37,6 +42,9 @@ public:
 	 * @brief open from a uri
 	 */
 	int open(const std::string uri);
+
+	int start();
+	int stop();
 
 	std::shared_ptr<AVFormatContext> getFmtCtxPtr() const {
 		return mAVFmtCtxPtr;
@@ -70,11 +78,21 @@ public:
 		return mEof;
 	}
 
+	int seekTo(int64_t msec);
+	int seekTo_l(int64_t msec);
+
 	AVRational getTimeScaleOfTrack(int idx) {
 		return mAVFmtCtxPtr->streams[idx]->time_base;
 	}
 private:
-	void threadEntry();
+	virtual void initEvents();
+	void onWaitEvent();
+	void onWorkEvent();
+	void onExitEvent();
+
+	int readPacket();
+
+	std::shared_ptr<TimedEventQueue::Event> mSourceEvent;
 	
 	std::shared_ptr<AVFormatContext> mAVFmtCtxPtr;
 	std::shared_ptr<MediaTracks>     mTracksPtr;
@@ -82,6 +100,10 @@ private:
 	int mVideoStreamId;
 	int mAudioStreamId;
 	bool mEof;
+	int mSeeking;
+	int64_t mSeekTimeMs; // msec
+	int mVideoReady;
+	int mAudioReady;
 };
 	
 }

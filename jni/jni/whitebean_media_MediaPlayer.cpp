@@ -219,6 +219,17 @@ static jboolean com_whitebean_media_MediaPlayer_isPlaying(JNIEnv *env, jobject t
 	return is_playing;
 }
 
+static void com_whitebean_media_MediaPlayer_seekTo(JNIEnv *env, jobject thiz, int64_t msec)
+{
+	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
+    if (mp == NULL ) {
+        jniThrowException(env, "java/lang/IllegalStateException", NULL);
+        return;
+    }
+
+	mp->seekTo(msec);
+}
+
 static int64_t com_whitebean_media_MediaPlayer_getCurrentPosition(JNIEnv *env, jobject thiz)
 {
 	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
@@ -309,6 +320,7 @@ static JNINativeMethod gMethods[] = {
     {"prepare",             "()V",                              (void *)com_whitebean_media_MediaPlayer_prepare},
     {"_start",              "()V",                              (void *)com_whitebean_media_MediaPlayer_start},
 	{"_pause",              "()V",                              (void *)com_whitebean_media_MediaPlayer_pause},
+	{"seekTo",              "(J)V",                             (void *)com_whitebean_media_MediaPlayer_seekTo},
 	{"isPlaying",           "()Z",                              (void *)com_whitebean_media_MediaPlayer_isPlaying},
 	{"getCurrentPosition",  "()J",                              (void *)com_whitebean_media_MediaPlayer_getCurrentPosition},
 	{"getDuration",         "()J",                              (void *)com_whitebean_media_MediaPlayer_getDuration},

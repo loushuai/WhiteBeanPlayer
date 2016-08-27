@@ -55,6 +55,7 @@ LOCAL_MODULE := whitebean
 LOCAL_SRC_FILES += mediaplayer/WhiteBeanPlayer.cpp \
 				   mediaplayer/AudioPlayer.cpp \
 				   mediaplayer/TimedEventQueue.cpp \
+				   mediaplayer/mediabase/MediaBase.cpp \
 				   mediaplayer/mediabase/MetaData.cpp \
 				   mediaplayer/mediabase/MediaSource.cpp \
 				   mediaplayer/mediabase/MediaTracks.cpp \

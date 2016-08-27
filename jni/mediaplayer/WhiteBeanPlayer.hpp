@@ -47,6 +47,7 @@ public:
 		mNativeWindow = nativeWindow;
 	}
 	bool isPlaying() const;
+	int seekTo(int64_t msec);
 
 private:
 	friend struct WhiteBeanEvent;

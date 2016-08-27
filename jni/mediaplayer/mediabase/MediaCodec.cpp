@@ -12,7 +12,7 @@
 using namespace std;
 
 namespace whitebean {
-
+	
 int Codec::open_l()
 {
 	AVCodec* codec;
@@ -47,9 +47,42 @@ int Codec::open_l()
 	if (avcodec_open2(mCodecPtr.get(), codec, NULL) < 0) {
 		LOGE("open decoder failed");
 		return -1;
-	}	
+	}
+
+	initEvents();
+	
+	// start event queue
+	mQueue.start();	
 	
 	return 0;
+}
+
+int Codec::start()
+{
+	onWaitEvent();
+	return 0;
+}
+
+int Codec::stop()
+{
+	mQueue.stop();
+	return 0;
+}	
+
+void Codec::clear()
+{
+	mClear = 1;
+}
+
+void Codec::clear_l()
+{
+	while (!mFrameQueue.empty()) {
+		mFrameQueue.pop();
+	}
+
+	avcodec_flush_buffers(mCodecPtr.get());
+
+	mClear = 0;
 }
 
 void Codec::timeScaleToUs(FrameBuffer &frmbuf)
@@ -58,6 +91,38 @@ void Codec::timeScaleToUs(FrameBuffer &frmbuf)
 		AVRational time_base = mSource->getTimeScaleOfTrack(mStreamId);
 		frmbuf.setPts(frmbuf.getPts()*US_IN_SECOND*time_base.num/time_base.den);
 	}
+}
+
+void Codec::initEvents()
+{
+	mEvents[EVENT_WAIT] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<Codec>(
+															  this, &Codec::onWaitEvent));
+	mEvents[EVENT_WORK] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<Codec>(
+															  this, &Codec::onWorkEvent));
+	mEvents[EVENT_EXIT] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<Codec>(
+															  this, &Codec::onExitEvent));
+}
+	
+void Codec::onWaitEvent()
+{
+	mQueue.postEvent(mEvents[EVENT_WORK]);
+}
+
+void Codec::onWorkEvent()
+{
+	int ret = 0;
+
+	ret = decode();
+	if (ret == ERR_AGAIN) {
+		this_thread::sleep_for(chrono::milliseconds(10));		
+	}
+
+	mQueue.postEvent(mEvents[EVENT_WORK]);
+}
+
+void Codec::onExitEvent()
+{
+
 }
 
 AudioDecoder::AudioDecoder()
@@ -192,69 +257,63 @@ end:
 	return ret;
 }
 
-void AudioDecoder::threadEntry()
+int AudioDecoder::decode()
 {
 	int ret = 0;
 	int gotframe = 0;
 
-	LOGD("Audio decoder loop enter");
-	
-	for (;;) {
-		if (mStopped) {
-			break;
-		}
+	LOGD("Decode Audio");
 
-		if (mFrameQueue.full()) {
-			LOGD("Audio decoder frame queue full");
-			this_thread::sleep_for(chrono::milliseconds(10));
-			continue;			
-		}
-
-		PacketBuffer pktbuf;
-		if (!mTracksPtr->readAudio(pktbuf) || pktbuf.empty()) {
-			LOGD("Audio decoder read packet failed");
-			this_thread::sleep_for(chrono::milliseconds(10));
-			continue;
-		}
-
-		LOGD("Audio decoder read packet ok");
-
-		FrameBuffer frmbuf, filtfrmbuf;
-		
-		ret = avcodec_decode_audio4(mCodecPtr.get(), frmbuf.getDataPtr(), &gotframe, pktbuf.getDataPtr());
-		if (ret < 0) {
-			LOGE("Audio decode error %d", ret);
-			continue;
-		}
-		if (!gotframe) {
-			LOGE("Audio decode failed");
-			continue;
-		}
-
-		LOGD("Audio decoder frame success");
-
-		if (av_buffersrc_add_frame_flags(mFilterCtx.bufferSrcCtx, frmbuf.getDataPtr(), 0) < 0) {
-			LOGE("Error while feeding the audio filtergraph");
-			break;
-		}
-
-		LOGD("Audio add filter frame success");
-
-		while (1) {
-			ret = av_buffersink_get_frame(mFilterCtx.bufferSinkCtx, filtfrmbuf.getDataPtr());
-			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-				break;
-			if (ret < 0)
-				goto end;
-		}
-
-		LOGD("Audio filter frame success");
-
-		timeScaleToUs(filtfrmbuf);
-		mFrameQueue.push(filtfrmbuf);
+	if (mFrameQueue.full()) {
+		LOGD("Audio decoder frame queue full");
+		this_thread::sleep_for(chrono::milliseconds(10));
+		return ERR_AGAIN;
 	}
- end:
-	LOGD("Audio decoder loop exit");
+
+	PacketBuffer pktbuf;
+	if (!mTracksPtr->readAudio(pktbuf) || pktbuf.empty()) {
+		LOGD("Audio decoder read packet failed");
+		this_thread::sleep_for(chrono::milliseconds(10));
+		return ERR_AGAIN;
+	}
+
+	LOGD("Audio decoder read packet ok");
+
+	FrameBuffer frmbuf, filtfrmbuf;
+
+	ret = avcodec_decode_audio4(mCodecPtr.get(), frmbuf.getDataPtr(), &gotframe, pktbuf.getDataPtr());
+	if (ret < 0) {
+		LOGE("Audio decode error %d", ret);
+		return ERR_AGAIN;
+	}
+	if (!gotframe) {
+		LOGE("Audio decode failed");
+		return ERR_AGAIN;
+	}
+
+	LOGD("Audio decoder frame success");
+
+	if (av_buffersrc_add_frame_flags(mFilterCtx.bufferSrcCtx, frmbuf.getDataPtr(), 0) < 0) {
+		LOGE("Error while feeding the audio filtergraph");
+		return ERR_INVALID;
+	}
+
+	LOGD("Audio add filter frame success");
+
+	while (1) {
+		ret = av_buffersink_get_frame(mFilterCtx.bufferSinkCtx, filtfrmbuf.getDataPtr());
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+			break;
+		if (ret < 0)
+			return ERR_INVALID;
+	}
+
+	LOGD("Audio filter frame success");
+
+	timeScaleToUs(filtfrmbuf);
+	mFrameQueue.push(filtfrmbuf);	
+	
+	return 0;
 }
 
 VideoDecoder::VideoDecoder()
@@ -298,71 +357,64 @@ bool VideoDecoder::read(FrameBuffer &frmbuf)
 	return true;
 }
 
-void VideoDecoder::threadEntry()
+int VideoDecoder::decode()
 {
 	int ret = 0;
 	int gotframe = 0;
 
-	LOGD("Video decoder loop enter");
+	LOGD("Decode Video");
 
-	for (;;) {
-		if (mStopped) {
-			break;
-		}
-
-		if (mFrameQueue.full()) {
-			LOGD("Video decoder frame queue full");
-			this_thread::sleep_for(chrono::milliseconds(10));
-			continue;			
-		}
-
-		PacketBuffer pktbuf;
-		if (!mTracksPtr->readVideo(pktbuf) || pktbuf.empty()) {
-			LOGD("Video decoder read packet failed");
-			this_thread::sleep_for(chrono::milliseconds(10));
-			continue;
-		}
-
-		LOGD("Audio decoder read packet ok");
-
-		FrameBuffer frmbuf, filtfrmbuf;
-
-		ret = avcodec_decode_video2(mCodecPtr.get(), frmbuf.getDataPtr(), &gotframe, pktbuf.getDataPtr());
-		if (ret < 0) {
-			LOGE("Video decode error %d", ret);
-			continue;
-		}
-		if (!gotframe) {
-			LOGE("Video decode failed");
-			continue;
-		}
-
-		LOGD("Video decoder frame success");
-
-		if (av_buffersrc_add_frame_flags(mFilterCtx.bufferSrcCtx, frmbuf.getDataPtr(), 0) < 0) {
-			LOGE("Error while feeding the audio filtergraph");
-			break;
-		}
-
-		LOGD("Video add filter frame success");
-
-		while (1) {
-			ret = av_buffersink_get_frame(mFilterCtx.bufferSinkCtx, filtfrmbuf.getDataPtr());
-			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-				break;
-			if (ret < 0)
-				goto end;
-		}
-
-		LOGD("Video filter frame success");
-
-		timeScaleToUs(filtfrmbuf);
-		mFrameQueue.push(filtfrmbuf);		
+	if (mFrameQueue.full()) {
+		LOGD("Video decoder frame queue full");
+		this_thread::sleep_for(chrono::milliseconds(10));
+		return ERR_AGAIN;
 	}
 
- end:
-	LOGD("Video decoder loop exit");	
-}
+	PacketBuffer pktbuf;
+	if (!mTracksPtr->readVideo(pktbuf) || pktbuf.empty()) {
+		LOGD("Video decoder read packet failed");
+		this_thread::sleep_for(chrono::milliseconds(10));
+		return ERR_AGAIN;
+	}
+
+	LOGD("Audio decoder read packet ok");
+
+	FrameBuffer frmbuf, filtfrmbuf;
+
+	ret = avcodec_decode_video2(mCodecPtr.get(), frmbuf.getDataPtr(), &gotframe, pktbuf.getDataPtr());
+	if (ret < 0) {
+		LOGE("Video decode error %d", ret);
+		return ERR_AGAIN;
+	}
+	if (!gotframe) {
+		LOGE("Video decode failed");
+		return ERR_AGAIN;
+	}
+
+	LOGD("Video decoder frame success");
+
+	if (av_buffersrc_add_frame_flags(mFilterCtx.bufferSrcCtx, frmbuf.getDataPtr(), 0) < 0) {
+		LOGE("Error while feeding the audio filtergraph");
+		return ERR_INVALID;
+	}
+
+	LOGD("Video add filter frame success");
+
+	while (1) {
+		ret = av_buffersink_get_frame(mFilterCtx.bufferSinkCtx, filtfrmbuf.getDataPtr());
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+			break;
+		if (ret < 0)
+			return ERR_INVALID;
+	}
+
+	LOGD("Video filter frame success");
+
+	timeScaleToUs(filtfrmbuf);
+	mFrameQueue.push(filtfrmbuf);	
+	
+	return 0;
+}	
 
 int VideoDecoder::initFilters()
 {

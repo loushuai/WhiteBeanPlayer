@@ -11,6 +11,7 @@
 #include <memory>
 #include <queue>
 #include <mutex>
+#include "MediaBase.hpp"
 #include "MediaSource.hpp"
 #include "MediaThread.hpp"
 #include "FrameBuffer.hpp"
@@ -26,30 +27,37 @@ extern "C" {
 
 namespace whitebean {
 
-#define US_IN_SECOND 1000000
-
 struct FilterContext {
 	std::shared_ptr<AVFilterGraph>   filterGraph;
 	AVFilterContext *bufferSinkCtx;
 	AVFilterContext *bufferSrcCtx;	
 };
 	
-class Codec: public MediaThread {
+class Codec: public MediaBase {
 public:
-    Codec():mFrameQueue(16) {}
+    Codec():mFrameQueue(16)
+		   , mClear(0) {}
 	virtual ~Codec() {}
 
-	virtual int open(std::shared_ptr<MediaSource> source) = 0;	
+	virtual int open(std::shared_ptr<MediaSource> source) = 0;
 	virtual bool read(FrameBuffer &frmbuf) = 0;
 	virtual void timeScaleToUs(FrameBuffer &frmbuf);
+	virtual void clear();
+	virtual int start();
+	virtual int stop();
 
 	virtual MetaData& getMetaData() {
 		return mMetaData;
 	}
 protected:	
-	virtual void threadEntry() {}
 	virtual int initFilters() {return 0;}
 	int open_l();
+	void clear_l();
+    virtual int decode() { return 0;}
+	virtual void initEvents();
+	virtual void onWaitEvent();
+	virtual void onWorkEvent();
+	virtual void onExitEvent();	
 
 	std::shared_ptr<MediaSource>     mSource;
 	std::shared_ptr<AVFormatContext> mAVFmtCtxPtr;
@@ -59,6 +67,7 @@ protected:
 	FilterContext mFilterCtx;
 	MetaData mMetaData;
 	int mStreamId;
+	int mClear;
 };
 
 class AudioDecoder : public Codec {
@@ -69,8 +78,8 @@ public:
 	virtual bool read(FrameBuffer &frmbuf) override;
 
 private:
-	virtual void threadEntry() override;
 	virtual int initFilters() override;
+	virtual int decode() override;
 	
 	int mSampleRate;
 	int mChannels;
@@ -84,8 +93,8 @@ public:
 	virtual bool read(FrameBuffer &frmbuf) override;
 
 private:	
-	virtual void threadEntry() override;
 	virtual int initFilters() override;
+	virtual int decode() override;
 
 	int mWidth;
 	int mHeight;

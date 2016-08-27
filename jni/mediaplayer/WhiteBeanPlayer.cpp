@@ -399,6 +399,16 @@ bool WhiteBeanPlayer::isPlaying() const
 	return mFlags & PLAYING;
 }
 
+int WhiteBeanPlayer::seekTo(int64_t msec)
+{
+	LOGD("Seek to %lld", msec);
+	unique_lock<mutex> autoLock(mLock);
+
+	mSourcePtr->seekTo(msec);
+	
+	return 0;
+}
+
 int WhiteBeanPlayer::getCurrentPosition()
 {
 	unique_lock<mutex> autoLock(mLock);
@@ -406,9 +416,11 @@ int WhiteBeanPlayer::getCurrentPosition()
 
 	if (mAudioPlayerPtr) {
 		curPos = mAudioPlayerPtr->getCurTime();
+	} else {
+		curPos = mVideoPosition;
 	}
 
-	curPos = mVideoPosition > curPos ? mVideoPosition : curPos;
+	//Curpos = mVideoPosition > curPos ? mVideoPosition : curPos;
 
 	return curPos/1000;
 }

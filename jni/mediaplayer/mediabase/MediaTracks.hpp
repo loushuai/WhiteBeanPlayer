@@ -37,6 +37,7 @@ public:
 	void packetIn(PacketBuffer &pktbuf);
 
 	bool full();
+	void clear();
 private:
 	int mVideoStreamId;
 	int mAudioStreamId;

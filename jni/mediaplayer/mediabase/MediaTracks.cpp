@@ -65,5 +65,16 @@ bool MediaTracks::full()
 {
 	return mSlots->full();
 }
+
+void MediaTracks::clear()
+{
+	while (!mVideoQueue.empty()) {
+		mVideoQueue.pop();
+	}
+
+	while (!mAudioQueue.empty()) {
+		mAudioQueue.pop();
+	}
+}
 	
 }
