@@ -38,6 +38,8 @@ int AudioPlayer::start()
 		return -1;
 	}
 
+	mDecoder.setListener(mSourcePtr.get());
+
 	mDecoder.start();
 
 	mSinkPtr = shared_ptr<AudioSink>(new OpenslSink);
@@ -76,6 +78,12 @@ void AudioPlayer::stop()
 	mDecoder.stop();
 	mSinkPtr->stop();
 	LOGD("AudioPlayer stop exit");	
+}
+
+int AudioPlayer::seekTo(int64_t msec)
+{
+	mDecoder.seekTo(msec);
+	return 0;
 }
 
 size_t AudioPlayer::fillBuffer(std::unique_ptr<uint8_t[]> &buf)

@@ -85,6 +85,8 @@ int WhiteBeanPlayer::initVideoDecoder()
 		return -1;
 	}
 
+	mVideoDecoder.setListener(mSourcePtr.get());
+
 	mVideoDecoder.start();
 	
 	return 0;
@@ -181,6 +183,8 @@ void WhiteBeanPlayer::onPrepareAsyncEvent()
 		LOGD("Set datasource error");
 		goto out;
 	}
+
+	mSourcePtr->setListener(this);
 	
 	mSourcePtr->start();
 
@@ -405,6 +409,10 @@ int WhiteBeanPlayer::seekTo(int64_t msec)
 	unique_lock<mutex> autoLock(mLock);
 
 	mSourcePtr->seekTo(msec);
+	mVideoDecoder.seekTo(msec);
+	if (mAudioPlayerPtr) {
+		mAudioPlayerPtr->seekTo(msec);
+	}
 	
 	return 0;
 }
@@ -439,6 +447,34 @@ void WhiteBeanPlayer::cancelPlayerEvents()
 {
 	mQueue.cancelEvent(mVideoEvent->eventID());
 	mVideoEventPending = false;
+}
+
+int WhiteBeanPlayer::mediaNotify(int msg, int arg1, int arg2)
+{
+	switch (msg) {
+	case SOURCE_SEEK_COMPLETE:
+		onSeekComplete();
+		break;
+	default:
+		LOGD("Unknown message %d", msg);
+		break;
+	}
+
+	return 0;
+}
+
+void WhiteBeanPlayer::onSeekComplete()
+{
+	unique_lock<mutex> autoLock(mLock);
+	
+	if (mAudioPlayerPtr) {
+		mAudioPlayerPtr->resume();
+	}
+	mVideoDecoder.resume();
+
+	if (!mVideoBuffer.empty()) {
+		mVideoBuffer.reset();
+	}	
 }
 	
 }

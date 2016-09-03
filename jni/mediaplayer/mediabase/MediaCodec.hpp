@@ -36,7 +36,7 @@ struct FilterContext {
 class Codec: public MediaBase {
 public:
     Codec():mFrameQueue(16)
-		   , mClear(0) {}
+		   {}
 	virtual ~Codec() {}
 
 	virtual int open(std::shared_ptr<MediaSource> source) = 0;
@@ -57,6 +57,7 @@ protected:
 	virtual void initEvents();
 	virtual void onWaitEvent();
 	virtual void onWorkEvent();
+	virtual void onClearEvent();
 	virtual void onExitEvent();	
 
 	std::shared_ptr<MediaSource>     mSource;
@@ -67,7 +68,6 @@ protected:
 	FilterContext mFilterCtx;
 	MetaData mMetaData;
 	int mStreamId;
-	int mClear;
 };
 
 class AudioDecoder : public Codec {
@@ -125,8 +125,24 @@ public:
 		}
 	}
 
+	int seekTo(int64_t msec) {
+		if (mDelegatePtr) {
+			mDelegatePtr->clear();
+		}
+		return 0;
+	}
+
+	// resume frome halt
+	void resume() {
+		mDelegatePtr->resume();
+	}
+
 	MetaData& getMetaData () {
 		return mDelegatePtr->getMetaData();
+	}
+
+	void setListener(IMediaListener *listener) {
+		mDelegatePtr->setListener(listener);
 	}
 private:
 	std::unique_ptr<Codec> mDelegatePtr;

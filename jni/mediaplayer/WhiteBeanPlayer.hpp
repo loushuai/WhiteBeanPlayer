@@ -25,7 +25,7 @@ public:
     virtual void notify(int msg, int ext1, int ext2) = 0;
 };
 	
-class WhiteBeanPlayer {
+class WhiteBeanPlayer: public IMediaListener {
 public:
 	WhiteBeanPlayer();
 	~WhiteBeanPlayer();
@@ -146,10 +146,12 @@ private:
 	void finishAsync_l();
 	void onVideoEvent();
 	void onPrepareAsyncEvent();
+	void onSeekComplete();
 	void reset_l();
 	void initRenderer_l();
 	int initVideoDecoder();
 	int videoNeedRender(FrameBuffer &frm);
+	int mediaNotify(int msg, int arg1 = 0, int arg2 = 0);
 };
 
 	

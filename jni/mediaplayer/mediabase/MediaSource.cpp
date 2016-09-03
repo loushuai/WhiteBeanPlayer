@@ -79,8 +79,7 @@ int MediaSource::open(const string uri)
 
 int MediaSource::start()
 {
-	mVideoReady = 1;
-	mAudioReady = 1;
+	mWaiting = 0;
 
 	onWaitEvent();	
 
@@ -95,8 +94,12 @@ int MediaSource::stop()
 
 int MediaSource::seekTo(int64_t msec)
 {
+	unique_lock<mutex> autoLock(mLock);
+	
 	mSeeking = 1;
 	mSeekTimeMs = msec;
+
+	//	mQueue.postEvent(mEvents[EVENT_SEEK]);
 
 	return 0;
 }
@@ -169,6 +172,8 @@ void MediaSource::initEvents()
 															  this, &MediaSource::onWaitEvent));
 	mEvents[EVENT_WORK] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<MediaSource>(
 															  this, &MediaSource::onWorkEvent));
+	mEvents[EVENT_SEEK] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<MediaSource>(
+															  this, &MediaSource::onSeekEvent));
 	mEvents[EVENT_EXIT] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<MediaSource>(
 															  this, &MediaSource::onExitEvent));
 }
@@ -177,8 +182,7 @@ void MediaSource::onWaitEvent()
 {
 	LOGD("Media source waiting...");
 
-	if ((hasVideo() && (!mVideoReady))
-		|| (hasAudio() && (!mAudioReady))) {
+	if (mWaiting) {
 		this_thread::sleep_for(chrono::milliseconds(100));
 		mQueue.postEvent(mEvents[EVENT_WAIT]);
 	} else {
@@ -205,9 +209,72 @@ void MediaSource::onWorkEvent()
 	mQueue.postEvent(mEvents[EVENT_WORK]);
 }
 
+void MediaSource::onSeekEvent()
+{
+	int ret = 0;
+
+	mQueue.cancelEvent(mEvents[EVENT_WORK]->eventID());
+	
+	ret = seekTo_l(mSeekTimeMs);
+	if (ret < 0) {
+		mQueue.postEvent(mEvents[EVENT_WORK]);
+		return;
+	}
+
+	mVideoReady = 0;
+	mAudioReady = 0;
+	mSeeking = 0;
+	
+	mQueue.postEvent(mEvents[EVENT_WORK]);
+
+	if (mListener) {
+		mListener->mediaNotify(SOURCE_SEEK_COMPLETE);
+	}
+}
+
 void MediaSource::onExitEvent()
 {
 
+}
+
+int MediaSource::mediaNotify(int msg, int arg1, int arg2)
+{
+	switch(msg) {
+	case IMediaListener::DECODER_CLEAR_COMPLETE:
+		return onDecoderClear(arg1);
+		break;
+	default:
+		LOGD("Unknown message %d", msg);
+		break;
+	}
+
+	return 0;
+}
+
+int MediaSource::onDecoderClear(int stream)
+{
+	unique_lock<mutex> autoLock(mLock);
+
+	LOGD("On decoder clear: seeking %d, stream %d", mSeeking, stream);
+
+	if (!mSeeking) {
+		return 0;
+	}
+	
+	if (stream == getVideoStreamId()) {
+		mVideoReady = 1;
+	}
+
+	if (stream == getAudioStreamId()) {
+		mAudioReady = 1;
+	}
+
+	if ((hasVideo() && mVideoReady)
+		&& (hasAudio() && mAudioReady)) {
+		mQueue.postEvent(mEvents[EVENT_SEEK]);
+	}
+	
+	return 0;
 }
 	
 }

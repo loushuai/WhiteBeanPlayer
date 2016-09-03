@@ -31,17 +31,34 @@ protected:
 private:
 	T *mContex;
 	void (T::*mMethod)();
-};	
+};
+
+class IMediaListener {
+public:
+	IMediaListener() {}
+	virtual ~IMediaListener() {}
+
+	enum MESSAGE {
+		SOURCE_SEEK_COMPLETE = 0,
+		DECODER_CLEAR_COMPLETE,
+	};
+
+	virtual int mediaNotify(int msg, int arg1 = 0, int arg2 = 0) = 0;
+};
 	
 class MediaBase {
 public:
-	MediaBase(): mEvents(EVENT_NUM) {};
+	MediaBase(): mEvents(EVENT_NUM)
+			   , mWaiting(0)
+			   , mListener(nullptr)
+	{};
 	virtual ~MediaBase() {};
 
 	enum EVENT {
 		EVENT_WAIT = 0,
 		EVENT_WORK,
 	    EVENT_SEEK,
+		EVENT_CLEAR,
 		EVENT_EXIT,
 		EVENT_NUM,
 	};
@@ -55,12 +72,34 @@ public:
 
 	virtual int start() { return 0; };
 	virtual int stop() { return 0; };
+
+	virtual int waiting() const {
+		std::unique_lock<std::mutex> autoLock(mBaseLock);
+		return mWaiting;
+	}
+	
+	virtual void halt() {
+		std::unique_lock<std::mutex> autoLock(mBaseLock);
+		mWaiting = 1;
+	}
+
+	virtual void resume() {
+		std::unique_lock<std::mutex> autoLock(mBaseLock);
+		mWaiting = 0;
+	}
+
+	void setListener(IMediaListener *listener) {
+		std::unique_lock<std::mutex> autoLock(mBaseLock);
+		mListener = listener;
+	}
 protected:
 	virtual void initEvents() {}
 	
 	TimedEventQueue mQueue;
+	int mWaiting;
 	std::vector<std::shared_ptr<TimedEventQueue::Event> > mEvents;
-	mutable std::mutex mStateLock;
+	mutable std::mutex mBaseLock;
+	IMediaListener *mListener;
 };
 	
 }

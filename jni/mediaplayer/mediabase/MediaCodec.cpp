@@ -71,7 +71,7 @@ int Codec::stop()
 
 void Codec::clear()
 {
-	mClear = 1;
+	mQueue.postEvent(mEvents[EVENT_CLEAR]);
 }
 
 void Codec::clear_l()
@@ -81,8 +81,6 @@ void Codec::clear_l()
 	}
 
 	avcodec_flush_buffers(mCodecPtr.get());
-
-	mClear = 0;
 }
 
 void Codec::timeScaleToUs(FrameBuffer &frmbuf)
@@ -99,13 +97,20 @@ void Codec::initEvents()
 															  this, &Codec::onWaitEvent));
 	mEvents[EVENT_WORK] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<Codec>(
 															  this, &Codec::onWorkEvent));
+	mEvents[EVENT_CLEAR] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<Codec>(
+															  this, &Codec::onClearEvent));	
 	mEvents[EVENT_EXIT] = shared_ptr<TimedEventQueue::Event> (new MediaEvent<Codec>(
 															  this, &Codec::onExitEvent));
 }
 	
 void Codec::onWaitEvent()
 {
-	mQueue.postEvent(mEvents[EVENT_WORK]);
+	if (waiting()) {
+		this_thread::sleep_for(chrono::milliseconds(10));		
+		mQueue.postEvent(mEvents[EVENT_WAIT]);
+	} else {
+		mQueue.postEvent(mEvents[EVENT_WORK]);
+	}
 }
 
 void Codec::onWorkEvent()
@@ -118,6 +123,18 @@ void Codec::onWorkEvent()
 	}
 
 	mQueue.postEvent(mEvents[EVENT_WORK]);
+}
+
+void Codec::onClearEvent()
+{
+	mQueue.cancelEvent(mEvents[EVENT_WORK]->eventID());
+	
+	clear_l();
+
+	halt();
+	mQueue.postEvent(mEvents[EVENT_WAIT]);
+	
+	mListener->mediaNotify(IMediaListener::DECODER_CLEAR_COMPLETE, mStreamId);
 }
 
 void Codec::onExitEvent()

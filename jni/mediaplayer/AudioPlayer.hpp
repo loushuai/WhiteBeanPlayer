@@ -24,7 +24,12 @@ public:
 	int start();
 	int pause();
 	void stop();
+	int seekTo(int64_t msec);
 	int64_t getCurTime() const; // in us
+
+	void resume() {
+		mDecoder.resume();
+	}
 private:
 	static size_t audioSinkCallBack(std::unique_ptr<uint8_t[]> &buf, void *cookie = nullptr);
 	size_t fillBuffer(std::unique_ptr<uint8_t[]> &buf);

@@ -10,6 +10,7 @@
 
 #include <string>
 #include <thread>
+#include <mutex>
 #include <memory>
 #include "MediaTracks.hpp"
 #include "MediaThread.hpp"
@@ -22,7 +23,7 @@ extern "C" {
 
 namespace whitebean {
 
-class MediaSource: public MediaBase {
+class MediaSource: public MediaBase, public IMediaListener {
 public:
 	MediaSource(): mTracksPtr(new MediaTracks)
 				 , mVideoStreamId(-1)
@@ -84,14 +85,22 @@ public:
 	AVRational getTimeScaleOfTrack(int idx) {
 		return mAVFmtCtxPtr->streams[idx]->time_base;
 	}
+
+	int mediaNotify(int msg, int arg1 = 0, int arg2 = 0);
 private:
 	virtual void initEvents();
 	void onWaitEvent();
 	void onWorkEvent();
+	void onSeekEvent();
 	void onExitEvent();
+
+	//listener callbacks
+	int onDecoderClear(int stream);
 
 	int readPacket();
 
+	mutable std::mutex mLock;
+	
 	std::shared_ptr<TimedEventQueue::Event> mSourceEvent;
 	
 	std::shared_ptr<AVFormatContext> mAVFmtCtxPtr;
