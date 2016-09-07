@@ -14,16 +14,7 @@ namespace whitebean
 	
 GLRenderer::GLRenderer()
 {
-    mVertexScript = STRINGIZE(
-        attribute vec4 a_position;
-        attribute vec2 a_tex_coord_in;
-        varying vec2 v_tex_coord_out;
 
-        void main(void) {
-            v_tex_coord_out = a_tex_coord_in;
-            gl_Position = a_position;
-        }
-    );
 }
 
 GLRenderer::~GLRenderer()
@@ -171,19 +162,8 @@ void GLRenderer::cropTexCoords(GLfloat ratio)
 	mTexCoords[6] = 0.0f;
 	mTexCoords[7] = 1.0f;
 }
-
-int GLRenderer::loadTexCoords()
-{
-	GLfloat coords[8];
-    GLuint a_tex_coord_in;
-
-    glGenBuffers(1, &mTexCoordBuffer);	
-    a_tex_coord_in = glGetAttribLocation(mGlProgram, "a_tex_coord_in");
-    glEnableVertexAttribArray(a_tex_coord_in);
-    glBindBuffer(GL_ARRAY_BUFFER, mTexCoordBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(mTexCoords), mTexCoords, GL_STATIC_DRAW);
-    glVertexAttribPointer(a_tex_coord_in, 2, GL_FLOAT, GL_TRUE, 0, 0);
-	
+int GLRenderer::loadTexCoords(int id)
+{	
 	return 0;
 }
 
@@ -201,47 +181,14 @@ int GLRenderer::getLineSize(GLFrame *pic)
 {
 	return 0;
 }
-
+	
 int GLRenderer::prepare()
 {
-	mGlProgram = createProgram(mVertexScript, mFragmentScript);
-	if (!mGlProgram) {
-		LOGE("Create program failed");
-		return -1;
-	}
-
-	initVertices();
-	loadVertices();
-
-	initTexCoords();
-	loadTexCoords();
-	initTexture();
-
 	return 0;
 }
 	
 int GLRenderer::render(GLFrame *pic)
 {
-	int bufLineSize = 0;
-	
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	if (pic) {
-		bufLineSize = getLineSize(pic);
-		loadTexture(pic);
-	} else {
-		return -1;
-	}
-
-	if (mBufferLineSize != bufLineSize) {
-		mBufferLineSize = bufLineSize;
-		GLfloat ratio = (GLfloat)pic->width / bufLineSize;
-		cropTexCoords(ratio);
-		loadTexCoords();
-	}
-
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, 0);
-
 	return 0;
 }
 	

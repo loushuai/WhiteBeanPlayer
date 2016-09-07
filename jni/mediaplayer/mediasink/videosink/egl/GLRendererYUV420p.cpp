@@ -13,17 +13,36 @@ namespace whitebean
 
 GLRendererYUV420p::GLRendererYUV420p()
 {
+    mVertexScript = STRINGIZE(
+        attribute vec4 a_position;
+        attribute vec2 a_tex_coord_in_y;
+		attribute vec2 a_tex_coord_in_u;
+		attribute vec2 a_tex_coord_in_v;
+        varying vec2 v_tex_coord_out_y;
+		varying vec2 v_tex_coord_out_u;
+		varying vec2 v_tex_coord_out_v;
+
+        void main(void) {
+            v_tex_coord_out_y = a_tex_coord_in_y;
+			v_tex_coord_out_u = a_tex_coord_in_u;
+			v_tex_coord_out_v = a_tex_coord_in_v;
+            gl_Position = a_position;
+        }
+    );	
+	
     mFragmentScript = STRINGIZE(
         precision highp float;
-        varying highp vec2 v_tex_coord_out;
+        varying highp vec2 v_tex_coord_out_y;
+		varying highp vec2 v_tex_coord_out_u;
+		varying highp vec2 v_tex_coord_out_v;
 		uniform sampler2D u_texture_y;
 		uniform sampler2D u_texture_u;
 		uniform sampler2D u_texture_v;
         void main() {
 			mat3 yuv2rgb = mat3(1, 0, 1.5958, 1, -0.39173, -0.81290, 1, 2.017, 0);
-			vec3 yuv = vec3(1.1643 * (texture2D(u_texture_y, v_tex_coord_out).r - 0.0625),
-							texture2D(u_texture_u,v_tex_coord_out).r - 0.5,
-							texture2D(u_texture_v,v_tex_coord_out).r - 0.5);
+			vec3 yuv = vec3(1.1643 * (texture2D(u_texture_y, v_tex_coord_out_y).r - 0.0625),
+							texture2D(u_texture_u,v_tex_coord_out_u).r - 0.5,
+							texture2D(u_texture_v,v_tex_coord_out_v).r - 0.5);
 			vec3 rgb = yuv * yuv2rgb;
 			gl_FragColor = vec4(rgb, 1.0);
         }
@@ -60,6 +79,36 @@ int GLRendererYUV420p::initTexture()
 	return 0;
 }
 
+int GLRendererYUV420p::loadTexCoords(int id)
+{
+	GLfloat coords[8];
+    GLuint a_tex_coord_in;
+	const char *p = NULL;
+
+	switch (id) {
+	case 0:
+		p = "a_tex_coord_in_y";
+		break;
+	case 1:
+	    p = "a_tex_coord_in_u";
+		break;
+	case 2:
+		p = "a_tex_coord_in_v";
+		break;
+	default:
+		return -1;
+	}
+
+    glGenBuffers(1, &mTexCoordBuffer[id]);	
+    a_tex_coord_in = glGetAttribLocation(mGlProgram, p);
+    glEnableVertexAttribArray(a_tex_coord_in);
+    glBindBuffer(GL_ARRAY_BUFFER, mTexCoordBuffer[id]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(mTexCoords), mTexCoords, GL_STATIC_DRAW);
+    glVertexAttribPointer(a_tex_coord_in, 2, GL_FLOAT, GL_TRUE, 0, 0);
+	
+	return 0;
+}	
+
 int GLRendererYUV420p::loadTexture(GLFrame *pic)
 {
     const GLsizei widths[3]  = {pic->pitches[0], pic->pitches[1], pic->pitches[2]};
@@ -88,6 +137,27 @@ int GLRendererYUV420p::loadTexture(GLFrame *pic)
 	return 0;
 }
 
+int GLRendererYUV420p::prepare()
+{
+	mGlProgram = createProgram(mVertexScript, mFragmentScript);
+	if (!mGlProgram) {
+		LOGE("Create program failed");
+		return -1;
+	}
+
+	initVertices();
+	loadVertices();
+
+	for (int i = 0; i < GLES2_MAX_PLANE; ++i) {
+		initTexCoords();
+		loadTexCoords(i);
+	}
+
+	initTexture();
+
+	return 0;
+}	
+
 int GLRendererYUV420p::getLineSize(GLFrame *pic)
 {
 	if (!pic) {
@@ -96,5 +166,35 @@ int GLRendererYUV420p::getLineSize(GLFrame *pic)
 
 	return pic->pitches[0];
 }
+
+int GLRendererYUV420p::render(GLFrame *pic)
+{
+	int bufLineSize[GLES2_MAX_PLANE] = {0};
+	int planes = 0;
+	
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	if (!pic) {
+		return -1;
+	}
+
+	loadTexture(pic);
+
+	GLfloat ratio = (GLfloat)pic->width / pic->getLineSize(0);
+	cropTexCoords(ratio);
+	loadTexCoords(0);
+
+	ratio = (GLfloat)pic->width / 2 / pic->getLineSize(1);
+	cropTexCoords(ratio);
+	loadTexCoords(1);
+
+	ratio = (GLfloat)pic->width / 2 / pic->getLineSize(2);
+	cropTexCoords(ratio);
+	loadTexCoords(2);	
+	
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, 0);
+
+	return 0;
+}	
 	
 }

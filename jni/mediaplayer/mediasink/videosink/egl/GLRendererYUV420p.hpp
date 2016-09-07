@@ -21,7 +21,10 @@ public:
 
 	int initTexture();
 	int loadTexture(GLFrame *pic);
+	int loadTexCoords(int id);
+	int prepare();
 	int getLineSize(GLFrame *pic);
+	int render(GLFrame *pic);
 private:
 	GLuint mTextures[GLES2_MAX_PLANE];
 	GLuint mSamplers[GLES2_MAX_PLANE];

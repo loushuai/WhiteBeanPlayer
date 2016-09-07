@@ -20,7 +20,7 @@ namespace whitebean
 
 class GLFrame{
 public:
-	GLFrame() {
+	GLFrame(): mPlanes(0) {
 		for (int i = 0; i < GLES2_MAX_PLANE; ++i) {
 			pixels[i] = nullptr;
 			pitches[i] = 0;
@@ -32,6 +32,9 @@ public:
 	GLFrame(FrameBuffer &frm): mFrameBuffer(frm) {		
 		int planes = GLES2_MAX_PLANE < mFrameBuffer.getNumDataPlanes() ?
 									   GLES2_MAX_PLANE : mFrameBuffer.getNumDataPlanes();
+
+		mPlanes = planes;
+		
 		for (int i = 0; i < planes; ++i) {
 			pixels[i] = mFrameBuffer.getDataPlane(i);
 			pitches[i] = mFrameBuffer.getLineSize(i);
@@ -41,12 +44,25 @@ public:
 	}
 	
 	~GLFrame() {}
+
+	int getPlanes() const {
+		return mPlanes;
+	}
+
+	int getLineSize(int i) const {
+		if (i >= GLES2_MAX_PLANE) {
+			return 0;
+		}
+
+		return pitches[i];
+	}
 	
 	GLubyte *pixels[GLES2_MAX_PLANE];
 	int pitches[GLES2_MAX_PLANE];
 	int width;
 	int height;
-private:	
+private:
+	int mPlanes;
 	FrameBuffer mFrameBuffer;
 };
 	
@@ -60,7 +76,7 @@ public:
 	virtual int loadVertices();
 	virtual void initTexCoords();
 	virtual void cropTexCoords(GLfloat ratio);
-	virtual int loadTexCoords();
+	virtual int loadTexCoords(int id);
 	virtual int initTexture();
 	virtual int loadTexture(GLFrame *pic);
 	virtual int getLineSize(GLFrame *pic);
@@ -78,7 +94,7 @@ protected:
 	int mVertexSize;
 	int mIndicesSize;
 	GLuint mVertexBuffer;
-	GLuint mTexCoordBuffer;
+	GLuint mTexCoordBuffer[GLES2_MAX_PLANE];
 	GLuint mIndicesBuffer;
 	GLuint mGlVShader;
 	GLuint mGlFShader;
