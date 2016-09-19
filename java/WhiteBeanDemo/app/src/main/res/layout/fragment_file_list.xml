@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <EditText
+        android:id="@+id/path_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="none"
+        android:editable="false"
+        android:visibility="gone"
+        android:lines="1" />
+
+    <ListView
+        android:id="@+id/file_list_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:choiceMode="singleChoice"
+        tools:context=".file_list_view" />
+
+</LinearLayout>

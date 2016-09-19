@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#CC000000"
+    android:orientation="vertical"
+    android:layoutDirection="ltr">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="4dip"
+        android:orientation="horizontal">
+
+        <ImageButton android:id="@+id/pause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="5dp"
+            android:src="@drawable/mediacontroller_pause"/>
+
+        <TextView
+            android:id="@+id/mediacontroller_time_current"
+            style="@style/MediaController_Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="5dp"
+            android:layout_toRightOf="@id/pause" />
+
+        <TextView
+            android:id="@+id/mediacontroller_time_slash"
+            style="@style/MediaController_Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="5dp"
+            android:text="/" />
+
+        <TextView
+            android:id="@+id/mediacontroller_time_total"
+            style="@style/MediaController_Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="5dp" />
+
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <SeekBar
+            android:id="@+id/mediacontroller_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dip"
+            android:layout_weight="1"
+            android:layout_height="32dip" />
+
+    </LinearLayout>
+
+
+</LinearLayout>
