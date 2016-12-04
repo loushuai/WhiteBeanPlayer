@@ -13,6 +13,9 @@ namespace whitebean
 
 GLRendererYUV420p::GLRendererYUV420p()
 {
+	mVertexSize = 2;
+	mTexCoordSize = 2;
+
     mVertexScript = STRINGIZE(
         attribute vec4 a_position;
         attribute vec2 a_tex_coord_in_y;
@@ -48,7 +51,59 @@ GLRendererYUV420p::GLRendererYUV420p()
         }
     );
 	
-	mGlProgram = createProgram(mVertexScript, mFragmentScript);
+//	mGlProgram = createProgram(mVertexScript, mFragmentScript);
+}
+
+void GLRendererYUV420p::initVertices()
+{
+	mVertices[0] = 1.0f;
+	mVertices[1] = -1.0f;
+	mVertices[2] = 1.0f;
+	mVertices[3] = 1.0f;
+	mVertices[4] = -1.0f;
+	mVertices[5] = 1.0f;
+	mVertices[6] = -1.0f;
+	mVertices[7] = -1.0f;
+
+	mVerticesPtr = mVertices;
+	mVerticesNum = sizeof(mVertices) / sizeof(GLfloat) / mVertexSize;
+
+	mIndices[0] = 0;
+	mIndices[1] = 1;
+	mIndices[2] = 2;
+	mIndices[3] = 2;
+	mIndices[4] = 3;
+	mIndices[5] = 0;
+
+	mIndicesPtr = mIndices;
+	mIndicesNum = sizeof(mIndices) / sizeof(GLubyte);
+}
+
+void GLRendererYUV420p::initTexCoords()
+{
+	mTexCoords[0] = 1.0f;
+	mTexCoords[1] = 1.0f;
+	mTexCoords[2] = 1.0f;
+	mTexCoords[3] = 0.0f;
+	mTexCoords[4] = 0.0f;
+	mTexCoords[5] = 0.0f;
+	mTexCoords[6] = 0.0f;
+	mTexCoords[7] = 1.0f;
+
+	mTexCoordsPtr = mTexCoords;
+	mTexCoordsNum = sizeof(mTexCoords) / sizeof(GLfloat) / mTexCoordSize;
+}
+
+void GLRendererYUV420p::cropTexCoords(GLfloat ratio)
+{
+	mTexCoords[0] = ratio;
+	mTexCoords[1] = 1.0f;
+	mTexCoords[2] = ratio;
+	mTexCoords[3] = 0.0f;
+	mTexCoords[4] = 0.0f;
+	mTexCoords[5] = 0.0f;
+	mTexCoords[6] = 0.0f;
+	mTexCoords[7] = 1.0f;
 }
 
 int GLRendererYUV420p::initTexture()
@@ -103,8 +158,8 @@ int GLRendererYUV420p::loadTexCoords(int id)
     a_tex_coord_in = glGetAttribLocation(mGlProgram, p);
     glEnableVertexAttribArray(a_tex_coord_in);
     glBindBuffer(GL_ARRAY_BUFFER, mTexCoordBuffer[id]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(mTexCoords), mTexCoords, GL_STATIC_DRAW);
-    glVertexAttribPointer(a_tex_coord_in, 2, GL_FLOAT, GL_TRUE, 0, 0);
+    glBufferData(GL_ARRAY_BUFFER, mTexCoordsNum * mTexCoordSize * sizeof(GLfloat), mTexCoordsPtr, GL_STATIC_DRAW);
+    glVertexAttribPointer(a_tex_coord_in, mTexCoordSize, GL_FLOAT, GL_TRUE, 0, 0);
 	
 	return 0;
 }	

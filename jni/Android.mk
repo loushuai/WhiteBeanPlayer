@@ -71,6 +71,8 @@ LOCAL_SRC_FILES += mediaplayer/WhiteBeanPlayer.cpp \
 				   mediaplayer/mediasink/videosink/egl/EglSink.cpp \
 				   mediaplayer/mediasink/videosink/egl/GLRenderer.cpp \
 				   mediaplayer/mediasink/videosink/egl/GLRendererYUV420p.cpp \
+				   mediaplayer/mediasink/videosink/egl/GLRendererPanoYUV420p.cpp \
+				   mediaplayer/mediasink/videosink/egl/utils/math3d.cpp \
 				   jni/whitebean_media_MediaPlayer.cpp
 
 LOCAL_STATIC_LIBRARIES := avformat avcodec avutil swresample avfilter swscale

@@ -91,15 +91,20 @@ protected:
 
 	GLuint mGlProgram;
 	GLubyte *mIndices;
-	int mVertexSize;
-	int mIndicesSize;
+	GLint  mVertexSize;
+	GLint  mTexCoordSize;
+	GLint  mIndicesSize;
 	GLuint mVertexBuffer;
 	GLuint mTexCoordBuffer[GLES2_MAX_PLANE];
 	GLuint mIndicesBuffer;
 	GLuint mGlVShader;
 	GLuint mGlFShader;
-	GLfloat mVertices[8];
-	GLfloat mTexCoords[8];
+	GLfloat *mVerticesPtr;
+	GLfloat *mTexCoordsPtr;
+	GLubyte *mIndicesPtr;
+	uint32_t mVerticesNum;
+	uint32_t mTexCoordsNum;
+	uint32_t mIndicesNum;
 	int mBufferLineSize;
 };
 	

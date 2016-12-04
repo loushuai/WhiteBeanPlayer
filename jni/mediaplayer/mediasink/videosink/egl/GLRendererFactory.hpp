@@ -10,12 +10,14 @@
 
 #include <memory>
 #include "GLRendererYUV420p.hpp"
+#include "GLRendererPanoYUV420p.hpp"
 
 namespace whitebean
 {
 
 enum {
 	GL_RENDERER_YUV420P,
+	GL_RENDERER_PANORAMIC_YUV420P,
 };
 
 class GLRendererFactory
@@ -28,6 +30,9 @@ public:
 		switch(type) {
 		case GL_RENDERER_YUV420P:
 			ret = std::shared_ptr<GLRenderer>(new GLRendererYUV420p);
+			break;
+		case GL_RENDERER_PANORAMIC_YUV420P:
+			ret = std::shared_ptr<GLRenderer>(new GLRendererPanoYUV420p);
 			break;
 		default:
 

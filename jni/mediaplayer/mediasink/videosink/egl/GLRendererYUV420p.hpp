@@ -17,7 +17,11 @@ class GLRendererYUV420p: public GLRenderer
 {
 public:
 	GLRendererYUV420p();
-	~GLRendererYUV420p() {}
+	virtual ~GLRendererYUV420p() {}
+
+	virtual void initVertices();
+	virtual void initTexCoords();
+	virtual void cropTexCoords(GLfloat ratio);
 
 	int initTexture();
 	int loadTexture(GLFrame *pic);
@@ -25,7 +29,10 @@ public:
 	int prepare();
 	int getLineSize(GLFrame *pic);
 	int render(GLFrame *pic);
-private:
+protected:
+	GLfloat mVertices[8];
+	GLfloat mTexCoords[8];
+	GLubyte mIndices[6];
 	GLuint mTextures[GLES2_MAX_PLANE];
 	GLuint mSamplers[GLES2_MAX_PLANE];
 };
