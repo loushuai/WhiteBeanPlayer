@@ -222,17 +222,7 @@ int GLRendererYUV420p::getLineSize(GLFrame *pic)
 	return pic->pitches[0];
 }
 
-int GLRendererYUV420p::render(GLFrame *pic)
-{
-	int bufLineSize[GLES2_MAX_PLANE] = {0};
-	int planes = 0;
-	
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	if (!pic) {
-		return -1;
-	}
-
+void GLRendererYUV420p::updateTexture(GLFrame *pic) {
 	loadTexture(pic);
 
 	GLfloat ratio = (GLfloat)pic->width / pic->getLineSize(0);
@@ -245,8 +235,19 @@ int GLRendererYUV420p::render(GLFrame *pic)
 
 	ratio = (GLfloat)pic->width / 2 / pic->getLineSize(2);
 	cropTexCoords(ratio);
-	loadTexCoords(2);	
-	
+	loadTexCoords(2);
+}
+
+int GLRendererYUV420p::render(GLFrame *pic)
+{
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	if (!pic) {
+		return -1;
+	}
+
+	updateTexture(pic);
+
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, 0);
 
 	return 0;

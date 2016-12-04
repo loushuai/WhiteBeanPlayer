@@ -46,6 +46,9 @@ public:
 	void setVideoSurface(ANativeWindow *nativeWindow) {
 		mNativeWindow = nativeWindow;
 	}
+
+	void onTouchMoveEvent(float dx, float dy);
+
 	bool isPlaying() const;
 	int seekTo(int64_t msec);
 

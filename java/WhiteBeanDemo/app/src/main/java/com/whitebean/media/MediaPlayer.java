@@ -92,6 +92,8 @@ public class MediaPlayer implements IMediaPlayer {
     @Override
     public native long getDuration();
 
+    public native void onTouchMove(float dx, float dy);
+
     private native void _setVideoSurface(Surface surface);
     private native void _setDataSource(String path)
             throws IOException, IllegalArgumentException, SecurityException, IllegalStateException;

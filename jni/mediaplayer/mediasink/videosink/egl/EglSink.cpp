@@ -41,7 +41,7 @@ EglSink::~EglSink() {
 	}
 }
 
-int EglSink::init()
+int EglSink::init(int type)
 {
 	GLint majorVersion;
 	GLint minorVersion;
@@ -126,7 +126,12 @@ int EglSink::init()
 
 	LOGD("EGL init success");
 
-	mRenderPtr = GLRendererFactory::create(GL_RENDERER_YUV420P);
+	if (type == VIDEO_SINK_TYPE_PANORAMIC) {
+		mRenderPtr = GLRendererFactory::create(GL_RENDERER_PANORAMIC_YUV420P);
+	} else {
+		mRenderPtr = GLRendererFactory::create(GL_RENDERER_YUV420P);
+	}
+
 	if (!mRenderPtr) {
 		LOGE("EGL create render error");
 		return -1;
@@ -149,6 +154,13 @@ int EglSink::display(FrameBuffer &frm)
 	eglSwapBuffers(mEglDisplay, mEglSurface);
 	
 	return 0;
+}
+
+void EglSink::onTouchMoveEvent(float dx, float dy)
+{
+	if (mRenderPtr) {
+		mRenderPtr->onTouchMoveEvent(dx, dy);
+	}
 }
 	
 }

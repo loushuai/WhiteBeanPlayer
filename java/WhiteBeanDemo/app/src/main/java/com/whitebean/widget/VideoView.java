@@ -53,6 +53,8 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
     private boolean     mCanPause;
     private boolean     mCanSeekBack;
     private boolean     mCanSeekForward;
+    private float       mPreviousX;
+    private float       mPreviousY;
 
     public VideoView(Context context) {
         super(context);
@@ -183,13 +185,40 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        Log.d(TAG, "onTouchEvent");
-        if (isInPlaybackState() && mMediaController != null) {
-            Log.d(TAG, "toggleMediaControlsVisiblity");
-            toggleMediaControlsVisiblity();
+        // MotionEvent reports input details from the touch screen
+        // and other input controls. In this case, you are only
+        // interested in events where the touch position changed.
+
+        float x = ev.getX();
+        float y = ev.getY();
+
+//        Log.d(TAG, "onTouchEvent " + x + " " + y);
+
+        switch (ev.getAction()) {
+            //when we move our finger
+            case MotionEvent.ACTION_MOVE:
+                float dx = x - mPreviousX;
+                float dy = y - mPreviousY;
+
+//                Log.d(TAG, "onTouchEvent MOVE " + dx + " " + dy);
+
+                if (mMediaPlayer != null) {
+                    mMediaPlayer.onTouchMove(dx, dy);
+                }
+                break;
+            //if we touch screen
+            case MotionEvent.ACTION_DOWN :
+                if (isInPlaybackState() && mMediaController != null) {
+                    Log.d(TAG, "toggleMediaControlsVisiblity");
+                    toggleMediaControlsVisiblity();
+                }
+                break;
         }
 
-        return false;
+        mPreviousX = x;
+        mPreviousY = y;
+
+        return true;
     }
 
     private void toggleMediaControlsVisiblity() {

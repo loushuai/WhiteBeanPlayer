@@ -22,13 +22,14 @@ public:
 	virtual void initVertices();
 	virtual void initTexCoords();
 	virtual void cropTexCoords(GLfloat ratio);
+	virtual int initTexture();
+	virtual int loadTexture(GLFrame *pic);
+	virtual int loadTexCoords(int id);
+	virtual void updateTexture(GLFrame *pic);
+	virtual int prepare();
+	virtual int getLineSize(GLFrame *pic);
+	virtual int render(GLFrame *pic);
 
-	int initTexture();
-	int loadTexture(GLFrame *pic);
-	int loadTexCoords(int id);
-	int prepare();
-	int getLineSize(GLFrame *pic);
-	int render(GLFrame *pic);
 protected:
 	GLfloat mVertices[8];
 	GLfloat mTexCoords[8];

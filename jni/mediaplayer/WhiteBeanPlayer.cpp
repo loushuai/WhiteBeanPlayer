@@ -276,7 +276,13 @@ void WhiteBeanPlayer::initRenderer_l()
 
 	mVideoSinkPtr = shared_ptr<VideoSink>(new EglSink(mNativeWindow));
 
-	if (mVideoSinkPtr->init()) {
+	int pano;
+	int sink_type = VIDEO_SINK_TYPE_NORMAL;
+	if (mSourcePtr && mSourcePtr->getFormat() && mSourcePtr->getFormat()->findInt32(kKeyPanoramic, pano)) {
+		sink_type = VIDEO_SINK_TYPE_PANORAMIC;
+	}
+
+	if (mVideoSinkPtr->init(sink_type)) {
 		LOGE("Video sink init failed");
 		return;
 	}
@@ -475,6 +481,13 @@ void WhiteBeanPlayer::onSeekComplete()
 	if (!mVideoBuffer.empty()) {
 		mVideoBuffer.reset();
 	}	
+}
+
+void WhiteBeanPlayer::onTouchMoveEvent(float dx, float dy)
+{
+	if (mVideoSinkPtr) {
+		mVideoSinkPtr->onTouchMoveEvent(dx, dy);
+	}
 }
 	
 }

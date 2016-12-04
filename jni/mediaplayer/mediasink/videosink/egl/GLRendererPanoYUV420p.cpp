@@ -13,15 +13,8 @@
 namespace whitebean
 {
 
-// debug
-void printM(float m[MATRIX_SIZE], char *tag)
-{
-	for (int i = 0; i < 4; ++i) {
-		LOGD("matrix %s row %d: %d %d %d %d", tag, i, m[4*i], m[4*i+1], m[4*i+2], m[4*i+3]);
-	}
-}
-
 const float GLRendererPanoYUV420p::mR = 5.0f;
+const float GLRendererPanoYUV420p::TOUCH_SCALE_FACTOR = 180.0f / 320 / 3.8f;
 
 GLRendererPanoYUV420p::GLRendererPanoYUV420p()
 : left(0)
@@ -60,11 +53,6 @@ GLRendererPanoYUV420p::GLRendererPanoYUV420p()
 	memset(mRotationMatrixY, 0, sizeof(mRotationMatrixY));
 	memset(mRotationMatrix, 0, sizeof(mRotationMatrix));
 	memset(mScrtch, 0, sizeof(mScrtch));
-
-	mScrtch[0] = 1;
-	mScrtch[5] = 1;
-	mScrtch[10] = 1;
-	mScrtch[15] = 1;
 }
 
 void GLRendererPanoYUV420p::initVertices()
@@ -115,8 +103,6 @@ void GLRendererPanoYUV420p::loadProjection(int viewDegree, float aspect)
 
     frustumM(mProjectionMatrix, left, right, bottom, top, 1.2f, 5.0f);
 
-    printM(mProjectionMatrix, "mProjectionMatrix");
-
     setLookAtM(mViewMatrix, 0, 0, 0, 0, 0, -1, 0, 1, 0);
     matrixMul4(mProjectionMatrix, mViewMatrix, mProjectionViewMatrix);
     setRotateM(mRotationMatrixX, angleY, -1.0f, 0.0f, 0);
@@ -132,16 +118,28 @@ int GLRendererPanoYUV420p::render(GLFrame *pic)
 	int surWidth = rec[2];
 	int surHeight = rec[3];
 
-	LOGD("GLRendererPanoYUV420p::render %d %d", surWidth, surHeight);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	if (!pic) {
+		return -1;
+	}
 
 	loadProjection(45, surWidth*1.0/surHeight);
 
     GLuint matrix = glGetUniformLocation(mGlProgram, "m_projection");
 	glUniformMatrix4fv(matrix, 1, 0, mScrtch);
 
-	printM(mScrtch, "mScrtch");
+	updateTexture(pic);
 
-	return GLRendererYUV420p::render(pic);
+	glDrawArrays(GL_TRIANGLE_STRIP , 0, mVerticesNum);
+
+	return 0;
+}
+
+void GLRendererPanoYUV420p::onTouchMoveEvent(float dx, float dy)
+{
+	angleX += dx * TOUCH_SCALE_FACTOR;
+	angleY += dy * TOUCH_SCALE_FACTOR;
 }
 
 }

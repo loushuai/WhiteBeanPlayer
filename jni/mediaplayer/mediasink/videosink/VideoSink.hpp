@@ -13,11 +13,17 @@
 namespace whitebean
 {
 
+enum {
+	VIDEO_SINK_TYPE_NORMAL,
+	VIDEO_SINK_TYPE_PANORAMIC,
+};
+
 class VideoSink {
 public:
 	virtual ~VideoSink() {}
-	virtual int init() = 0;
+	virtual int init(int type = VIDEO_SINK_TYPE_NORMAL) = 0;
 	virtual int display(FrameBuffer &frm) = 0;
+	virtual void onTouchMoveEvent(float dx, float dy) = 0;
 };	
 	
 }

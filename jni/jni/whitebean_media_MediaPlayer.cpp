@@ -313,6 +313,17 @@ static void com_whitebean_media_MediaPlayer_native_setup(JNIEnv *env, jobject th
 	setMediaPlayer(env, thiz, mp);
 }
 
+static void com_whitebean_media_MediaPlayer_onTouchMove(JNIEnv *env, jobject thiz, jfloat dx, jfloat dy)
+{
+	LOGD("com_whitebean_media_MediaPlayer_onTouchMove dx:%f, dy:%f", dx, dy);
+	shared_ptr<WhiteBeanPlayer> mp = getMediaPlayer(env, thiz);
+	if (mp == NULL) {
+		return;
+	}
+
+	mp->onTouchMoveEvent(dx, dy);
+}
+
 
 static JNINativeMethod gMethods[] = {
 	{"_setDataSource",        "(Ljava/lang/String;)V",          (void *)com_whitebean_media_MediaPlayer_setDataSourcePath},
@@ -327,6 +338,7 @@ static JNINativeMethod gMethods[] = {
 	{"_release",            "()V",                              (void *)com_whitebean_media_MediaPlayer_release},
 	{"native_init",         "()V",                              (void *)com_whitebean_media_MediaPlayer_native_init},
 	{"native_setup",        "(Ljava/lang/Object;)V",            (void *)com_whitebean_media_MediaPlayer_native_setup},
+	{"onTouchMove",         "(FF)V",                            (void *)com_whitebean_media_MediaPlayer_onTouchMove},
 };
 
 int jniRegisterNativeMethods(JNIEnv* env,

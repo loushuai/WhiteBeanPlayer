@@ -20,6 +20,7 @@ public interface IMediaPlayer {
     boolean isPlaying();
     long getCurrentPosition();
     long getDuration();
+    void onTouchMove(float dx, float dy);
 
     void setOnPreparedListener(OnPreparedListener listener);
 

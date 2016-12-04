@@ -24,8 +24,9 @@ public:
 	EglSink(ANativeWindow *nwindow);
 	~EglSink();
 
-	int init();
+	int init(int type);
 	int display(FrameBuffer &frm);
+	void onTouchMoveEvent(float dx, float dy);
 private:
 	ANativeWindow               *mNativeWindow;
 	EGLNativeDisplayType	     mEglDisplay;

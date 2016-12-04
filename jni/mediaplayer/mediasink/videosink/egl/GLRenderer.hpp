@@ -82,6 +82,7 @@ public:
 	virtual int getLineSize(GLFrame *pic);
 	virtual int prepare();
 	virtual int render(GLFrame *pic);
+	virtual void onTouchMoveEvent(float dx, float dy) {}
 	
 protected:
 	const char *mVertexScript;
