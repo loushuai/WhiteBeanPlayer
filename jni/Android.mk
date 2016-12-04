@@ -15,11 +15,6 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE    := avfilter
-LOCAL_SRC_FILES := libffmpeg/libavfilter.a
-include $(PREBUILT_STATIC_LIBRARY)
-
-include $(CLEAR_VARS)
 LOCAL_MODULE    := avutil
 LOCAL_SRC_FILES := libffmpeg/libavutil.a
 include $(PREBUILT_STATIC_LIBRARY)
@@ -27,11 +22,7 @@ include $(PREBUILT_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE    := avcodec
 LOCAL_SRC_FILES := libffmpeg/libavcodec.a
-include $(PREBUILT_STATIC_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE    := avformat
-LOCAL_SRC_FILES := libffmpeg/libavformat.a
+LOCAL_STATIC_LIBRARIES := avutil
 include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -42,6 +33,22 @@ include $(PREBUILT_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE    := swresample
 LOCAL_SRC_FILES := libffmpeg/libswresample.a
+include $(PREBUILT_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE    := postproc
+LOCAL_SRC_FILES := libffmpeg/libpostproc.a
+include $(PREBUILT_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE    := avfilter
+LOCAL_SRC_FILES := libffmpeg/libavfilter.a
+LOCAL_STATIC_LIBRARIES := avutil avcodec swresample postproc
+include $(PREBUILT_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE    := avformat
+LOCAL_SRC_FILES := libffmpeg/libavformat.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -59,8 +66,8 @@ LOCAL_SRC_FILES += mediaplayer/WhiteBeanPlayer.cpp \
 				   mediaplayer/mediabase/MetaData.cpp \
 				   mediaplayer/mediabase/MediaSource.cpp \
 				   mediaplayer/mediabase/MediaTracks.cpp \
-                   mediaplayer/mediabase/MediaCodec.cpp \
-                   mediaplayer/mediasink/audiosink/opensl/openslsink.cpp \
+           		   mediaplayer/mediabase/MediaCodec.cpp \
+           		   mediaplayer/mediasink/audiosink/opensl/openslsink.cpp \
 				   mediaplayer/mediasink/videosink/egl/EglSink.cpp \
 				   mediaplayer/mediasink/videosink/egl/GLRenderer.cpp \
 				   mediaplayer/mediasink/videosink/egl/GLRendererYUV420p.cpp \
