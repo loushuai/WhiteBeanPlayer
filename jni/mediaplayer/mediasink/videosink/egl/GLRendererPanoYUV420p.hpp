@@ -33,7 +33,7 @@ private:
 	GLfloat mVertices[((mPhiSteps + 1) * (2 * (mTettaSteps + 1) - 2)) * 3];
 	GLfloat mTexCoords[((mPhiSteps + 1) * (2 * (mTettaSteps + 1) - 2)) * 2];
 
-	void loadProjection(int viewDegree, float aspect);
+	void loadProjection(float aspect);
 
 	float left;
 	float right;

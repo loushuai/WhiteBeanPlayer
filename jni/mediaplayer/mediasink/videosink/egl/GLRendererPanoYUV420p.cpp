@@ -91,19 +91,19 @@ void GLRendererPanoYUV420p::initTexCoords()
 	mTexCoordsNum = sizeof(mTexCoords) / sizeof(GLfloat) / mTexCoordSize;
 }
 
-void GLRendererPanoYUV420p::loadProjection(int viewDegree, float aspect)
+void GLRendererPanoYUV420p::loadProjection(float aspect)
 {
     float ratio = aspect;
     left = -1.0f;
     right = 1.0f;
     bottom = -1.0f;
     top = 1.0f;
-    bottom *= ratio;
-    top *= ratio;
+    left *= ratio;
+    right *= ratio;
 
     frustumM(mProjectionMatrix, left, right, bottom, top, 1.2f, 5.0f);
 
-    setLookAtM(mViewMatrix, 0, 0, 0, 0, 0, -1, 0, 1, 0);
+    setLookAtM(mViewMatrix, 0, 0, 0, 0, 0, -1, 0, -1, 0);
     matrixMul4(mProjectionMatrix, mViewMatrix, mProjectionViewMatrix);
     setRotateM(mRotationMatrixX, angleY, -1.0f, 0.0f, 0);
     setRotateM(mRotationMatrixY, angleX, 0.0f, -1.0f, 0);
@@ -124,7 +124,7 @@ int GLRendererPanoYUV420p::render(GLFrame *pic)
 		return -1;
 	}
 
-	loadProjection(45, surWidth*1.0/surHeight);
+	loadProjection(surWidth*1.0/surHeight);
 
     GLuint matrix = glGetUniformLocation(mGlProgram, "m_projection");
 	glUniformMatrix4fv(matrix, 1, 0, mScrtch);
@@ -138,8 +138,8 @@ int GLRendererPanoYUV420p::render(GLFrame *pic)
 
 void GLRendererPanoYUV420p::onTouchMoveEvent(float dx, float dy)
 {
-	angleX += dx * TOUCH_SCALE_FACTOR;
-	angleY += dy * TOUCH_SCALE_FACTOR;
+	angleX -= dx * TOUCH_SCALE_FACTOR;
+	angleY -= dy * TOUCH_SCALE_FACTOR;
 }
 
 }
