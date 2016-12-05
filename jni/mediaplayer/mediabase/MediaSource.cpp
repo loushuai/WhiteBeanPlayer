@@ -44,6 +44,13 @@ int MediaSource::open(const string uri)
 			LOGD("video stream %d", i);
 			mVideoStreamId = i;
 			mTracksPtr->setVideoStream(i);
+
+			mFormat->setInt32(kKeyWidth, fmtptr->streams[i]->codec->width);
+			mFormat->setInt32(kKeyHeight, fmtptr->streams[i]->codec->height);
+			if (fmtptr->streams[i]->codec->width == fmtptr->streams[i]->codec->height << 1) {
+				LOGD("I guess this is a panoramic video");
+				mFormat->setInt32(kKeyPanoramic, 1);
+			}
 			break;
 		}
 	}

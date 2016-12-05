@@ -25,6 +25,7 @@ enum {
     kKeyColorFormat       = 'colf',
 	kKeyTime              = 'time',  // int64_t (usecs)
 	kKeyDuration          = 'dura',  // int64_t (usecs)
+	kKeyPanoramic		  = 'pano',  // int32_t (0 / 1)
 };
 
 class MetaData {
